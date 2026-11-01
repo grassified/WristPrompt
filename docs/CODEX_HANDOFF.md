@@ -42,8 +42,8 @@ Do not change dependency pins merely to match another machine's global tools.
 
 ## D5-H current evidence — 2026-10-31
 
-[../DAY5_G_REPORT.md](../DAY5_G_REPORT.md) records only supplied Galaxy Watch 7
-observations; [../DAY5_H_REPORT.md](../DAY5_H_REPORT.md) owns remediation evidence.
+[DAY5_G_REPORT.md](history/DAY5_G_REPORT.md) records only supplied Galaxy Watch 7
+observations; [DAY5_H_REPORT.md](history/DAY5_H_REPORT.md) owns remediation evidence.
 An empty terminal output array no longer erases accumulated text/replay; explicit
 terminal text still wins. Canonical completion already commits atomically before
 partial clear; no session/coalescer ownership redesign was needed. Active output
@@ -61,8 +61,8 @@ checks pass. See the report for exact counts, final changes and limitations.
 ## Historical evidence before D5-H, not rerun for this handoff
 
 Original evidence commit IDs map to sanitized history in [HISTORY_REWRITE.md](HISTORY_REWRITE.md).
-Source: [../DAY5_STATUS.md](../DAY5_STATUS.md) and
-[../DAY5_F_REPORT.md](../DAY5_F_REPORT.md), sections N–Q.
+Source: [DAY5_STATUS.md](history/DAY5_STATUS.md) and
+[DAY5_F_REPORT.md](history/DAY5_F_REPORT.md), sections N–Q.
 
 - Full Wear run: 459 tests / 52 suites, zero failures/errors/skips.
 - Final narrow correction: 40 tests / 4 suites; added debug fixture run: 18 tests /
@@ -76,7 +76,7 @@ Source: [../DAY5_STATUS.md](../DAY5_STATUS.md) and
 - Thirty rotary windows: 0–3.76% debug-AVD jank. Twelve reset/navigation cycles:
   no monotonic matched Java retention. This does not prove hardware performance,
   battery life or universal frame budgets. Safe aggregate metrics remain in
-  [../DAY5_F_METRICS.json](../DAY5_F_METRICS.json).
+  [DAY5_F_METRICS.json](history/DAY5_F_METRICS.json).
 
 ## Rules that must survive future work
 
@@ -92,7 +92,7 @@ scrolling, explicit Latest, Stop priority; model rows contain authoritative name
 and selected state only.
 
 D5 UI projections/caches are disposable. DISPLAY TRANSCRIPT differs from RESPONSES
-API REPLAY CONTEXT. D6 needs separate durable/versioned records and no per-token
+API REPLAY CONTEXT. D6 uses separate durable/versioned records and no per-token
 writes; do not persist UI projection objects as its schema.
 
 ## Known debt
@@ -111,49 +111,10 @@ writes; do not persist UI projection objects as its schema.
 
 ## Next contributor action
 
-D6-C history/startup/rename/delete work is recorded in [D6_C_HISTORY.md](D6_C_HISTORY.md).
-Continue with D6-D consolidated acceptance after C integration. Upstream #14 may
-still await maintainer merge; fork main contains the tested B integration. Keep
-upstream and fork merge evidence distinct. Wear/physical pending results remain open.
-
-D6-B canonical checkpoint/store work is documented in [D6_B_STORAGE.md](D6_B_STORAGE.md).
-The contributor is authorized to continue D6/D7 without per-issue approval, and to
-prepare dependent branches while upstream merges are pending. This overrides the
-historical phase-stop directions below for this development run. Upstream merges
-still require actual GitHub write permission; do not bypass repository protections.
-
-D6-A was merged upstream as `78d5cc2`; its design is in
-[D6_A_PERSISTENCE_ARCHITECTURE.md](D6_A_PERSISTENCE_ARCHITECTURE.md), refined by B's
-bounded SQLite checkpoint decision. Next is D6-D consolidated validation, followed
-by D7-A/B presets and D7-C/D/E multi-image/composer work in dependency order.
-See [D6/D7 backlog](D6_D7_BACKLOG.md) for issue scopes and branch suggestions.
-
-Monday (2026-11-02) priority: stability, then (1) D6 persistence, (2) custom prompts,
-(3) multi-image input, (4) integration/release sanity, (5) image generation stretch.
-Image generation must not block or destabilize the core build.
-
-Presets are durable named USER prompt text authored on the phone, synced to watch,
-and explicitly inserted into its draft. User may edit/combine text and images;
-non-empty draft requires insert/replace/cancel. No hidden master/system prompt,
-no automatic inference; the watch reviews and explicitly presses Send.
-
-Use Android Photo Picker multi-select → normalize/resize/compress → app-private
-WristPrompt-managed library → bounded asset/data sync → watch thumbnails and
-multiple selection/removal. Do not browse the entire phone gallery remotely.
-One user message supports text + N images; unsupported model/route errors clearly,
-with no model switch or billing fallback. Extend the existing Responses stack.
-
-D6 schema anticipates Text and ImageAttachment. DISPLAY TRANSCRIPT != RESPONSES
-API REPLAY CONTEXT; preserve opaque validated continuation/reasoning where needed.
-No Compose persistence or per-token writes. Commit completed canonical exchanges
-transactionally or equivalently safely; binaries normally live in private files
-referenced by durable metadata. Exact schema belongs to D6-A.
-
-Use a feature branch and open a PR for each implementation issue; do not push
-implementation directly to main. Keep PR scope to the issue, without mixing D6/D7
-phases. State tests actually run and distinguish VERIFIED AUTOMATICALLY, VERIFIED
-ON EMULATOR and VERIFIED PHYSICALLY. Never claim physical PASS without owner
-results; never run destructive owner-device tests without exact authorization.
+v0.1.0 core acceptance is complete. Consult the live backlog before starting a new
+issue-scoped branch. #1 table presentation and #11 optional live API-key generation
+verification remain open; sent-image transcript thumbnails are post-release UX work.
+No new implementation is authorized by this handoff.
 
 ## License and publication
 

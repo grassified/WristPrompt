@@ -8,8 +8,8 @@ Historical D5-H catalog: **83 scenarios**: D5-F’s 77 plus six targeted remedia
 D5-C added 22, D5-D added two model fixtures, and D5-E added four failure/limit fixtures.
 The D5-B inventory below has 47 entries; the D5-C inventory appends 22.
 This guide owns the current catalog and commands. Historical
-phase evidence and limitations remain in [DAY4_STATUS.md](DAY4_STATUS.md);
-[DAY3_REPORT.md](DAY3_REPORT.md) records prior presentation acceptance.
+phase evidence and limitations remain in [DAY4_STATUS.md](history/DAY4_STATUS.md);
+[DAY3_REPORT.md](history/DAY3_REPORT.md) records prior presentation acceptance.
 
 ## D5-A shell compatibility — 2026-10-30
 
@@ -31,7 +31,7 @@ before/after performance limitations are recorded separately in DAY5_STATUS.md.
 
 ## Prerequisites and commands
 
-Use the existing JDK/SDK/signing environment in [DEVELOPMENT.md](DEVELOPMENT.md).
+Use the existing JDK/SDK/signing environment in [DEVELOPMENT.md](../DEVELOPMENT.md).
 Boot the existing **WristPrompt_Watch7** AVD; Android Studio is unnecessary.
 Exactly one online watch emulator must be present. Every scenario runner checks
 `emulator-*`, watch characteristics and the expected AVD name, excludes physical
@@ -236,7 +236,7 @@ of launching the release APK on a physical device.
   No Day 4 physical acceptance is performed in D4-F.
 - **BLOCKED — EMULATOR LIMITATION**: capability-dependent production paired auth
   handoff remains NOT VERIFIABLE ON CURRENT EMULATOR LAB. See
-  [EMULATOR_CAPABILITY_INVESTIGATION.md](EMULATOR_CAPABILITY_INVESTIGATION.md).
+  [EMULATOR_CAPABILITY_INVESTIGATION.md](history/EMULATOR_CAPABILITY_INVESTIGATION.md).
 
 No real radio-transition, real OpenAI request, funded BYOK-success, production
 Data Layer auth/handoff or hardware Keystore/AtomicFile result follows from these
@@ -372,7 +372,7 @@ rotary/action evidence and limitations are recorded in DAY5_E_REPORT.md.
 All earlier identifiers/meanings are retained. These fixtures remain debug-only,
 with no credential/repository/network use. D5-F performance/accessibility evidence,
 readiness-versus-interaction limits and the physical D5-G checklist are in
-[DAY5_F_REPORT.md](DAY5_F_REPORT.md). No new ACK fields or lifecycle commands.
+[DAY5_F_REPORT.md](history/DAY5_F_REPORT.md). No new ACK fields or lifecycle commands.
 
 ## D5-H focused remediation — 2026-10-31
 
@@ -387,4 +387,4 @@ scale 2.0 for the header. Do not run the full catalog for this phase.
 
 Readiness is not terminal or visual acceptance: wait for completion, inspect the
 answer, and verify the Menu action at maximum font. Restore font scale afterward.
-No physical-device operations. Evidence: [DAY5_H_REPORT.md](DAY5_H_REPORT.md).
+No physical-device operations. Evidence: [DAY5_H_REPORT.md](history/DAY5_H_REPORT.md).

@@ -24,33 +24,23 @@ Required for release:
 - Explicit OpenAI API-key fallback with a visible billing-path indicator.
 - Secure credentials, refresh, sign-out/revocation, and useful authentication,
   network, policy, model-access, and usage-limit errors.
-- Local conversation context supplied on every request. Initially keep one
-  conversation in watch process memory; process death clears it. Persist only
-  settings and protected credentials for v0.1; no conversation database.
+- Durable local completed conversations/history, separate display and validated replay,
+  atomic checkpoints and explicit continuation; unsent drafts/live tokens are not durable.
 - Optional voice-to-text through the platform input experience, only after the
   authentication/inference gates pass. No OpenAI transcription dependency.
 
-Out of scope unless the user changes scope: other providers (Claude, Gemini,
-OpenRouter, custom compatible servers), images/vision/attachments, web search,
-tools/function calling, MCP, cloud sync, conversation organization/search,
-personas, marketplaces, payments/subscriptions, custom backends, large architecture
-frameworks, and unnecessary animations. No analytics, tracking, advertising, or
-remote crash reporting.
+Out of scope: additional providers, web search, general tools/MCP, cloud chat sync,
+marketplaces, payments and custom backends. No analytics, advertising or remote crash reporting.
 
-## Authorized next scope — 2026-10-31 (D6 implementation in progress)
+## Delivered D6/D7 scope — v0.1.0
 
-The memory-only and image-exclusion statements above describe the delivered D5
-baseline. Owner-authorized D6/D7 planning supersedes those scope exclusions only
-for persistent conversations/history, explicit named USER prompt presets managed
-on phone and inserted/editable on watch, and a managed imported multi-image
-library feeding text + N image Responses messages. Watch review and explicit Send
-remain mandatory. No hidden always-on prompt, automatic inference, model switch
-or billing fallback. Image generation/viewer is optional STRETCH, not a core gate.
-D6-A must decide storage/schema first, separate display from replay, anticipate
-Text/ImageAttachment, and avoid per-token writes/UI-object persistence. See
-[ROADMAP.md](ROADMAP.md) and [handoff](docs/CODEX_HANDOFF.md). D6-B/C are implemented
-on contributor branches with consolidated acceptance pending. D7-A phone presets
-are implemented with manual checks pending; see [docs/D7_A_PRESETS.md](docs/D7_A_PRESETS.md).
+Persistent history, phone-managed named USER presets, managed Photo Picker library,
+text + multiple images, native Thinking and optional API-key image generation/viewer
+are implemented. Watch review and explicit Send remain mandatory. No hidden
+always-on prompt, automatic inference, model switch or billing fallback.
+Core owner acceptance: READY WITH NON-BLOCKING DEBT; see
+[final acceptance](docs/D7_G_ACCEPTANCE.md). #1 structured-table presentation and
+#11 optional live API-key generation verification remain non-blocking.
 
 ## Runtime responsibilities
 

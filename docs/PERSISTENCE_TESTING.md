@@ -21,7 +21,7 @@ The Terra → Sol observation is a real, non-blocking persistence defect, deferr
 as low-priority Day 3 model-picker/chat technical debt. Automated selection tests
 do not override this physical result. Root cause is not yet established; no product
 code fix is made in this documentation task. A/B/C do not require another manual
-session now. The remaining concise checklist is in [DAY2_STATUS.md](DAY2_STATUS.md).
+session now. The remaining concise checklist is in [DAY2_STATUS.md](history/DAY2_STATUS.md).
 No raw host/client/token records were requested to confirm these results.
 
 ## State/storage assessment
@@ -86,7 +86,7 @@ from an ordinary fresh-token restart. Do not force-stop during a refresh to test
 normal restart persistence.
 
 Phase C follow-up: the prior paragraphs describe the D2-1 implementation snapshot.
-[REFRESH_REVIEW.md](REFRESH_REVIEW.md) supersedes the refresh-lock/clock/timing
+[REFRESH_REVIEW.md](history/REFRESH_REVIEW.md) supersedes the refresh-lock/clock/timing
 assessment: registration-scoped locks, a shared injectable clock, a distinction
 between live and uncertain renewal, and a no-guess guard for undocumented earliest
 metadata. D2-1 physical results and the separate model-restoration defect remain

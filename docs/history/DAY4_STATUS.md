@@ -1577,7 +1577,7 @@ random owner identifiers remain; no credentials, account IDs or chat content.
 **43 public scenarios, 10 categories; all manually launchable, useful and confined
 to synthetic in-memory application state plus the fixed non-secret debug ACK.**
 Full per-name inventory, smoke membership, special-runner requirements, purpose
-and overlap disposition: [WEAR_SCENARIOS.md](WEAR_SCENARIOS.md).
+and overlap disposition: [WEAR_SCENARIOS.md](../WEAR_SCENARIOS.md).
 
 | Category | Count |
 | --- | ---: |
