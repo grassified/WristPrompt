@@ -1,5 +1,14 @@
 # Six-day release plan
 
+**2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
+Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
+presets, photo sync, supported multi-image inference, composer/IME, general UI and
+ChatGPT-plan Thinking. Default-only plan Thinking is intentional; explicit API-key
+native effort was not physically tested (automated contract coverage passes).
+#1 remains readable table-fallback debt; optional #11 live API-key generation is
+BLOCKED by unavailable owner credential. See [acceptance](docs/D7_G_ACCEPTANCE.md).
+
+
 ## Current Day 2 gate — 2026-10-29
 
 **PASS WITH KNOWN DEBT.** Owner-confirmed physical refresh-regression restoration,
@@ -344,19 +353,19 @@ Gate: preserve inference/auth/account/billing/composer safety; verify automated
 and emulator results separately from physical evidence. D5 is not release freeze.
 No persistent conversation storage or new background infrastructure in D5.
 
-## Day 6 — persistent conversations — implementation merged; physical acceptance pending
+## Day 6 — persistent conversations — accepted
 
-D6-A–C are merged on main. D6-D nonphysical acceptance is complete; owner
-Galaxy Watch physical acceptance remains pending in #5. PR #21 is merged; #5 stays open for owner physical evidence.
+D6-A–D implementation and acceptance are complete; owner results are in
+[docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md).
 
-- [ ] D6-A: FIRST task, read-only architecture audit and decision/implementation
+- [x] D6-A: FIRST task, read-only architecture audit and decision/implementation
   plan before broad production changes. Select storage, schema/versioning,
   transactions, compatibility ownership, migrations, recovery and cleanup.
-- [ ] D6-B: approved durable conversations, completed exchanges and metadata;
+- [x] D6-B: approved durable conversations, completed exchanges and metadata;
   typed Text/ImageAttachment-ready content parts; atomic commits and tests.
-- [ ] D6-C: history, New Chat, reopen/continue, rename/delete, restart restoration;
+- [x] D6-C: history, New Chat, reopen/continue, rename/delete, restart restoration;
   pin/favorite optional only if trivial.
-- [ ] D6-D: lifecycle/migration/recovery acceptance, separate emulator/physical evidence.
+- [x] D6-D: lifecycle/migration/recovery acceptance, separate emulator/physical evidence.
 
 DISPLAY TRANSCRIPT != RESPONSES API REPLAY CONTEXT. Preserve validated opaque
 continuation/reasoning items. No persisted Compose objects or per-token writes.
@@ -366,34 +375,23 @@ No image-input implementation in D6-A; no database selected in this handoff.
 
 ## Day 7 — companion productivity + multimodal input + final integration
 
-D7-A phone presets are merged via PR #22 and VERIFIED AUTOMATICALLY; manual phone checks
-remain pending in [docs/D7_A_PRESETS.md](docs/D7_A_PRESETS.md). D7-B sync/insertion is merged via PR #23; #7 remains open for paired/physical checks in
-[docs/D7_B_PRESET_SYNC.md](docs/D7_B_PRESET_SYNC.md). D7-C imported photo library,
-Asset synchronization and multi-selection are implemented with automated/synthetic
-emulator evidence in [docs/D7_C_PHOTO_LIBRARY.md](docs/D7_C_PHOTO_LIBRARY.md).
-#8 remains open for paired physical acceptance deferred to #12. D7-D image input and
-durable attachment replay are implemented; see [docs/D7_D_IMAGE_INPUT.md](docs/D7_D_IMAGE_INPUT.md).
-#9 stays open for live-route/physical acceptance deferred to #12. D7-E combined composer implementation/automated acceptance is complete; see
-[docs/D7_E_COMPOSER.md](docs/D7_E_COMPOSER.md). #10 remains open for physical
-acceptance deferred to #12. D7-G integrated acceptance is in progress in [docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md).
-D7-H implementation is merged via PR #25; #18 stays open for physical/live evidence.
-D7-F image generation and bounded Wear viewer are merged via PR #30; automated/emulator
-acceptance is complete. #11 remains open for owner live API-key generation and
-Galaxy Watch viewer acceptance in the consolidated #12 physical pass.
+D7 core implementation and owner physical acceptance are complete. See
+[docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md) for evidence and limitations.
+Optional #11 live API-key generation remains BLOCKED; #1 remains non-blocking.
 
-- [ ] D7-A: durable named custom USER prompt presets managed on phone (list,
+- [x] D7-A: durable named custom USER prompt presets managed on phone (list,
   create/edit/rename/delete, multiline editor); no hidden always-on system prompt.
-- [ ] D7-B: sync presets to watch; explicit insertion/editing in composer;
+- [x] D7-B: sync presets to watch; explicit insertion/editing in composer;
   non-empty draft uses insert/replace/cancel, never silent overwrite or auto-send.
-- [ ] D7-C: multiple Android Photo Picker import, normalization/compression,
+- [x] D7-C: multiple Android Photo Picker import, normalization/compression,
   app-private managed library and thumbnails; bounded Wear Data Layer asset/data
   sync, stale/replay protection, cleanup; watch multi-select/removal. No full
   remote phone-gallery browser or broad permission when Picker is sufficient.
-- [ ] D7-D: existing Responses stack supports text + N images in one user message;
+- [x] D7-D: existing Responses stack supports text + N images in one user message;
   explicit unsupported route/model error, no automatic switching/billing fallback.
-- [ ] D7-E: presets + edits + text + multiple attachments + watch review/explicit Send.
+- [x] D7-E: presets + edits + text + multiple attachments + watch review/explicit Send.
 - [ ] D7-F: image generation and fullscreen zoom/pan viewer — STRETCH, defer if core unstable.
-- [ ] D7-G: final integration, physical Galaxy Watch acceptance and Monday alpha readiness.
+- [x] D7-G: final integration, physical Galaxy Watch acceptance and Monday alpha readiness.
 
 Order: D6-A → B → C → D. D7-A and C may begin once D6-A establishes persistence
 and attachment boundaries. D7-B depends on A; D7-D on C + attachment-capable D6-B;

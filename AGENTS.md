@@ -1,5 +1,14 @@
 # WristPrompt engineering rules
 
+**2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
+Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
+presets, photo sync, supported multi-image inference, composer/IME, general UI and
+ChatGPT-plan Thinking. Default-only plan Thinking is intentional; explicit API-key
+native effort was not physically tested (automated contract coverage passes).
+#1 remains readable table-fallback debt; optional #11 live API-key generation is
+BLOCKED by unavailable owner credential. See [acceptance](docs/D7_G_ACCEPTANCE.md).
+
+
 ## Contribution branch rules
 
 - Never implement directly on `main`. Before editing, inspect `git status`,
@@ -164,8 +173,8 @@ D5 is PASS WITH KNOWN DEBT; the physical Markdown table-rendering debt and
 untested TalkBack remain documented. D6-A–D implementation/nonphysical acceptance
 is merged on `main` (PR #21).
 D7-A–E and D7-H implementation is merged (PRs #22/#23/#25/#26/#27/#28).
-Consolidated owner physical acceptance remains pending in #12; #5/#7/#8/#9/#10/#18
-remain open for that evidence. #11 is deferred OPTIONAL STRETCH for Monday.
+Owner core physical acceptance is complete for v0.1.0; #1 and optional #11 remain
+non-blocking. Live paid API-key checks remain unverified.
 See [docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md) for the integrated gate.
 Check [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md),
 [ROADMAP.md](ROADMAP.md), and [docs/D6_D7_BACKLOG.md](docs/D6_D7_BACKLOG.md) for

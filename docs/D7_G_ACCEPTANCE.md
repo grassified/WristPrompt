@@ -1,7 +1,8 @@
 # D7-G final core acceptance — 2026-11-01
 
 Issue #12; Monday target 2026-11-02. Branch `d7/12-alpha-readiness`.
-**Alpha readiness: NOT READY — consolidated owner physical evidence is missing.**
+**Alpha readiness: READY WITH NON-BLOCKING DEBT.**
+Owner physical evidence supplied on 2026-11-02; historical automated/emulator evidence below remains separately labeled.
 No product behavior, dependency, credential, protocol or signing changes in this task.
 No release/upload/publication authorization is implied.
 
@@ -92,68 +93,31 @@ Targeted test-APK build: PASS. No full gate repeat; production APKs unchanged. H
 Capability-dependent paired GMS acceptance remains unverified in the emulator lab.
 Synthetic provider checks do not prove live provider or physical behavior.
 
-## VERIFIED PHYSICALLY — owner checklist
+## VERIFIED PHYSICALLY — owner results, 2026-11-02
 
-No current owner results supplied. Every item below is **NOT TESTED**.
-Target watch: Galaxy Watch 7 SM-L310, API 36; phone: paired Galaxy Note10+.
-Record PASS / FAIL / BLOCKED / NOT TESTED per subcheck, with build SHA, route/model,
-font, exact observed behavior and reproduction. Do not turn an entire row PASS
-when one listed subcheck remains untested. Keep account identifiers/content private.
+Owner-supplied evidence from Galaxy Watch 7 SM-L310, Wear OS / API 36,
+paired Android phone, matched signing/build identity and current D7-G build.
+These are owner observations, not tests performed by this automation session.
+Exact model IDs, individual restart methods and separate subcheck telemetry were
+not supplied; no additional per-subcheck result is inferred.
 
-Deployment reminder: **1. rebuild current APKs; 2. install/update BOTH phone and
-watch APKs; 3. verify/reconnect ADB devices; 4. then run the test.**
-No owner installation has occurred in this session; no physical device is connected.
-Use current serials after connecting both devices; never reuse emulator serials.
-
-```sh
-# From repository root; DEVELOPMENT.md environment exports must be set.
-./gradlew :mobile:assembleDebug :wear:assembleDebug
-adb devices -l
-# Set these to the currently listed physical phone/watch serials.
-read -r PHONE_SERIAL
-read -r WATCH_SERIAL
-adb -s "$PHONE_SERIAL" shell getprop ro.product.model
-adb -s "$WATCH_SERIAL" shell getprop ro.product.model
-adb -s "$WATCH_SERIAL" shell getprop ro.build.version.sdk
-adb -s "$PHONE_SERIAL" install -r mobile/build/outputs/apk/debug/mobile-debug.apk
-adb -s "$WATCH_SERIAL" install -r wear/build/outputs/apk/debug/wear-debug.apk
-adb devices -l
-```
-
-Require Success from both installs. On signing mismatch STOP and preserve data;
-never uninstall or replace signing keys. Use `adb connect HOST:PORT` only with the
-current device's wireless-debugging endpoint if reconnection is needed.
-Use non-sensitive disposable preset/photos/chat content for this pass. Only delete
-those test items explicitly through the UI; preserve existing owner content.
-Do not clear app data, revoke sessions, wipe credentials/Keystore, fill storage,
-corrupt databases or run androidTest fault injection on physical devices.
-
-| ID | Coherent sequence / individual observations to record | Result |
+| Scope | Result | Owner observation / boundary |
 | --- | --- | --- |
-| A | Launch both apps; existing account usable; state restores; no auth loop; paired path functional; zero startup inference. Preserve sign-in. | NOT TESTED |
-| B1 / #5 | Complete a test chat, navigate away/reopen, explicitly continue; verify completed context; rename and reopen renamed item. | NOT TESTED |
-| B2 / #5 | Stop an active test turn; reopen/continue and observe stopped content excluded. Ordinary safe restart and, separately, optional ordinary force-stop/relaunch: completed chat restores idle with no stale request. Record method; force-stop is not natural process death. | NOT TESTED |
-| B3 / #5 | History at normal/large font with rotary; model/account/billing boundaries visibly explicit without changing/revoking credentials. | NOT TESTED |
-| C1 / #7 | On phone create/edit/rename test preset; watch receives each revision. Insert into empty draft; edit inserted text; test Insert/Replace/Cancel against non-empty draft. None sends. | NOT TESTED |
-| C2 / #7 | Retain a test preset, delete a second; restart watch, temporarily disconnect phone; existing presets browse offline; reconnect, deleted item never resurrects. | NOT TESTED |
-| D1 / #18 | All authoritative name/selection-only model rows precede separate Thinking control; Default distinct from native none where supported. Change model: supported values refresh, invalid old value visibly resets/blocks. Zero inference on selections. | NOT TESTED |
-| D2 / #18 | Supported exact native value survives appropriate reopen/restart; later turn may change it; explicit Send required; one supported explicit live setting completes if feasible. Record route/model/value; no universal-support claim. Plan route currently exposes Default only. | NOT TESTED |
-| E1 / #8 | Real phone Android Photo Picker: import one then multiple test images; orientation/thumbnail correct; phone library and actual watch transfer/thumbnails complete. Queue acceptance alone is not delivery. | NOT TESTED |
-| E2 / #8 | Watch multi-select, individual removal, Cancel preserves committed state; restart and browse transferred thumbnails offline; reconnect. Delete only a test library image; confirm sync/no resurrection. No inference. | NOT TESTED |
-| F1 / #9 | Separately explicitly Send text only, text + one image, text + multiple images on an allowlisted available model/route. Each completes; record selected route/model. Images-only must block with draft/selections retained. | NOT TESTED |
-| F2 / #9 | Reopen completed image chat and explicitly continue. Delete its disposable source library image via UI; conversation-owned replay still continues. Stop image request if feasible; stopped/failed attempt excluded and no automatic retry. | NOT TESTED |
-| G1 / #10 | Preset Insert/Replace/Cancel → edit via real IME → add ordinary text → attach multiple → inspect thumbnails → remove one → edit again → explicit Send. Zero requests before Send, one Send, completed result; Stop reachable while streaming. | NOT TESTED |
-| G2 / #10 | Ordinary navigation/Activity recreation retains review. Separately safe process restart discards unsent review and restores canonical completed chat idle. Intentional process-death draft discard is expected. | NOT TESTED |
-| H1 / #11 | SIWC/ChatGPT-plan generation remains clearly unsupported with zero fallback. On a reviewed supported OpenAI API-key route/model, explicit Generate sends exactly one request; changing model/Thinking/navigation alone sends none. Generated image appears in conversation. | NOT TESTED |
-| H2 / #11 | Reopen generated-image chat and restart/reopen app; image remains available. Open viewer and verify physical pinch zoom, pan, clamping/inward recovery, Close, system Back and predictable reopen. If practical, Stop one disposable generation before completion and verify no false completed image or automatic retry. | NOT TESTED |
-| I | Repeat representative history/model/Thinking/preset/photo/composer/generation/Send/Stop screens at normal and maximum practical font; round clipping, touch targets, rotary, keyboard editing and thumbnail/viewer interactions. Prioritize IME and visible multiple images. TalkBack separately if actually tested. | NOT TESTED |
-| J1 | Completed Markdown, headings/lists/emphasis, code block horizontal touch, vertical scrolling, explicit Latest and reader-position preservation. | NOT TESTED |
-| J2 / #1 | Physically reproduce one representative Markdown table. Record whether Wear-friendly stacked records are absent, whether fallback remains readable, normal/max-font clipping and rotary. #1 remains non-blocking unless ordinary chat becomes unusable. | NOT TESTED |
+| A startup/auth | PASS | Existing account connected; normal chat/model discovery; selected models restored; no startup inference. |
+| B / #5 persistence/history | PASS | Requested disposable-chat, reopen, continuation, restart and Stop path worked. |
+| C / #7 presets | PASS | Paired synchronization, create/edit/rename/delete and watch interactions worked; no unexpected inference. |
+| D / #18 Thinking | PASS (ChatGPT-plan) | Every available plan model showed “Native levels unavailable for this model”; Default only is intentional because authoritative native-level lists are unavailable on this route. Controls did not infer; round-screen behavior passed. |
+| D / #18 live API-key explicit effort | NOT TESTED | No owner API key. Automated exact capability/serialization/validation tests cover this contract; no physical explicit-effort dispatch claimed. |
+| E / #8 photo library | PASS | Real import, phone→watch sync and library/selection worked. Unsupported visual models rejected input without route/model/billing fallback, as expected. |
+| F / #9 multimodal inference | PASS | Text only, text + one image and text + multiple images worked on supported models. |
+| G / #10 composer/IME | PASS | Full combined composer, real-device editing/IME and multi-image flow passed. |
+| H / #11 live generation | BLOCKED | Owner has no API key. SIWC generation is unsupported by design. No live paid API-key generation or physical generated-image viewer PASS claimed. Optional, non-blocking. |
+| I general UI | PASS | Broad watch inspection, large/maximum font, navigation and rotary usable; no material round clipping observed. |
+| J / #1 structured tables | FAIL (known non-blocking debt) | Structured stacked-record view absent; readable list fallback, usable maximum font and working rotary. Ordinary chat remains usable. |
 
-Thinking examples are native strings only where supported (none/minimal/low/medium/
-high/xhigh/max/future supported values); never expect all values on every model.
-Unknown image IDs fail closed. Use a model in the current implementation's audited
-allowlist and current catalog; do not switch billing or probe arbitrary models.
+Sent input-image thumbnails are absent from the completed transcript. This is a
+non-blocking UX limitation outside #9 inference/replay and #10 composer review.
+TalkBack remains NOT TESTED. No physical battery/thermal or universal-device claim.
 
 ## Security / release sanity
 
@@ -178,26 +142,19 @@ debug signing is for development, not production signing or publication readines
 
 ## BLOCKED / DEFERRED / KNOWN DEBT
 
-- Owner device installation and physical A–J: BLOCKED pending connected devices
-  and owner observations. All underlying unperformed checks remain NOT TESTED.
-- Live image-input, image-generation and explicit supported Thinking completion:
-  NOT TESTED; no owner
-  credentials used by automation. Preserve each route's separate result.
-- Paired-emulator capability discovery limitation remains; no gating bypass.
-- #11: implementation/automated/emulator acceptance merged via PR #30;
-  owner physical/live acceptance NOT TESTED. #1: non-blocking known debt, open.
-- TalkBack: NOT TESTED. No claim about physical battery/thermal behavior.
+- #1 remains OPEN: reproduced structured-table presentation debt, readable fallback.
+- #11 remains OPEN: optional live API-key generation BLOCKED by unavailable owner
+  credential; automated/emulator pipeline, persistence and viewer evidence remains valid.
+- #18 accepted for v0.1.0: intentional Default-only plan route physically passed;
+  explicit API-key native effort has automated coverage, not live physical coverage.
+  Issue acceptance does not mandate a live paid API-key request as a closure gate.
+- Sent-image transcript thumbnails are a post-v0.1.0 UX enhancement.
+- Paired-emulator capability limitation remains; no production gating bypass.
+- TalkBack NOT TESTED; no physical battery/thermal evidence.
 
-## Defect and closure policy
+## Final disposition
 
-No reproducible core defect found so far; no production fix made. For a failure,
-record exact reproduction, classify code/environment/unsupported contract/intentional
-behavior, isolate smallest owner, add focused coverage and fix only a core defect.
-Rebuild/update affected APKs and repeat that physical check plus affected automated
-checks. Do not repeatedly rerun the full gate. If a difficult defect remains
-uncertain after one focused attempt, report ESCALATE THIS DEFECT TO GPT-6.1 SOL MEDIUM
-with owner/files, evidence, attempt and reason.
-
-Close #5/#7/#8/#9/#10/#11/#18 only after their remaining physical/live acceptance passes;
-BLOCKED/NOT TESTED never qualifies. Close #12 and merge its focused PR only after
-sufficient core acceptance and explicit non-blocking disposition of remaining debt.
+Core acceptance: **READY WITH NON-BLOCKING DEBT**. Owner evidence supports closure
+of #5/#7/#8/#9/#10/#18 and final gate #12. #1 and optional #11 remain open.
+No production code, protocol, credential, storage, signing or dependency changes.
+No new physical run is required for documentation-only release organization.

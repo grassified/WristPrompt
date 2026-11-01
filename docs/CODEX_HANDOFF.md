@@ -1,5 +1,14 @@
 # Codex handoff
 
+**2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
+Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
+presets, photo sync, supported multi-image inference, composer/IME, general UI and
+ChatGPT-plan Thinking. Default-only plan Thinking is intentional; explicit API-key
+native effort was not physically tested (automated contract coverage passes).
+#1 remains readable table-fallback debt; optional #11 live API-key generation is
+BLOCKED by unavailable owner credential. See [acceptance](D7_G_ACCEPTANCE.md).
+
+
 This file and the linked repository documents are sufficient for a fresh developer
 or Codex account. No previous chat, owner account token, debug key or private local
 configuration is required to understand the project. Build a separate matched
@@ -7,36 +16,11 @@ phone/watch debug pair; preserve owner installations and keys.
 
 ## Current state
 
-**D5: PASS WITH KNOWN DEBT — COMPLETE.**
-D6-A–C are merged on main. D6-D nonphysical acceptance is complete; owner Galaxy
-Watch physical acceptance remains pending in #5, after merged PR #21.
-D7-A phone presets are merged via PR #22; manual phone evidence
-is pending. See [D7_A_PRESETS.md](D7_A_PRESETS.md). D7-B sync/insertion is merged via PR #23; #7 remains open. See [D7_B_PRESET_SYNC.md](D7_B_PRESET_SYNC.md)
-for automated/emulator evidence and pending paired/physical checks.
-D7-H thinking controls are implemented; see [D7_H_THINKING.md](D7_H_THINKING.md)
-for route capability limits and evidence. #18 remains open for physical acceptance
-deferred to #12. D7-C photo import/library/Asset synchronization and multi-selection
-are implemented; #8 stays open for paired physical acceptance deferred to #12.
-See [D7_C_PHOTO_LIBRARY.md](D7_C_PHOTO_LIBRARY.md) for limits, evidence and the
-original #9 boundary. D7-D text + multiple image input and durable replay are
-implemented; see [D7_D_IMAGE_INPUT.md](D7_D_IMAGE_INPUT.md) for exact-ID capability
-contracts, limits and evidence. #9 remains open for live-route/physical acceptance
-deferred to #12. D7-E combined composer is implemented; see [D7_E_COMPOSER.md](D7_E_COMPOSER.md)
-for draft lifecycle policy and evidence. #10 stays open for physical acceptance
-deferred to #12. D7-G integrated acceptance is in progress; see [D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md).
-D7-F image generation and bounded Wear viewer are merged via PR #30; automated/emulator
-acceptance is complete. #11 remains open for owner live API-key generation and
-Galaxy Watch viewer acceptance in #12. #1 remains non-blocking debt.
-Final owner Galaxy Watch 7 retest: R1–R5/R7–R10 PASS; R6 structured Markdown
-Wear table rendering FAIL / non-blocking known debt. TalkBack remains untested.
-
-WristPrompt is an OpenAI-only, local-first/backend-free native Wear OS client:
-ChatGPT OAuth and explicit API-key billing, account model discovery, watch-direct
-streaming, real Stop, multi-turn memory chat, chat-first D5 UI, approximately 100 ms
-coalesced presentation, explicit Latest, native Markdown/tables/code, a name-only
-model picker, Account/Settings/Diagnostics and concise recovery actions.
-Local persistent history is implemented by D6-B/C; detailed acceptance and remaining
-Wear/physical checks are recorded in D6_B_STORAGE.md and D6_C_HISTORY.md.
+D6-A–D and D7-A–F/H implementations are merged. Core owner physical acceptance
+is complete; see [D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md) for exact scope and
+separate automated/emulator evidence. #1 and #11 remain non-blocking.
+WristPrompt provides watch-direct streaming, durable local history, explicit
+billing, preset/photo sync, multi-image input and API-key image generation.
 
 ## Read and build
 

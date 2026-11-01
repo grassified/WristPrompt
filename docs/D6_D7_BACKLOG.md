@@ -1,11 +1,18 @@
 # D6/D7 implementation backlog
 
+**2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
+Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
+presets, photo sync, supported multi-image inference, composer/IME, general UI and
+ChatGPT-plan Thinking. Default-only plan Thinking is intentional; explicit API-key
+native effort was not physically tested (automated contract coverage passes).
+#1 remains readable table-fallback debt; optional #11 live API-key generation is
+BLOCKED by unavailable owner credential. See [acceptance](D7_G_ACCEPTANCE.md).
+
+
 D5 is PASS WITH KNOWN DEBT — COMPLETE. D6-A–C are merged through #16/#17;
 D6-D implementation/nonphysical acceptance is merged via #21. D7-A–F and D7-H
-are merged via #22/#23/#25/#26/#27/#28/#30. #5/#7/#8/#9/#10/#11/#18 remain
-open for consolidated physical/live acceptance in
-[D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md).
-#6 is closed. #1 is non-blocking debt.
+are merged via #22/#23/#25/#26/#27/#28/#30. Core owner acceptance passed;
+see [D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md). #1 and optional #11 remain open.
 This document is planning,
 not permission to implement subsequent phases.
 
