@@ -161,9 +161,13 @@ changes require repository/security/link/whitespace checks, not full D5 acceptan
 ### Current project state and persistence invariants
 
 D5 is PASS WITH KNOWN DEBT; the physical Markdown table-rendering debt and
-untested TalkBack remain documented. D6-A–C are merged on `main`. D6-D
-consolidated lifecycle, migration, and recovery acceptance is pending. D7
-implementation has not started. Check [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md),
+untested TalkBack remain documented. D6-A–D implementation/nonphysical acceptance
+is merged on `main` (PR #21).
+D7-A–E and D7-H implementation is merged (PRs #22/#23/#25/#26/#27/#28).
+Consolidated owner physical acceptance remains pending in #12; #5/#7/#8/#9/#10/#18
+remain open for that evidence. #11 is deferred OPTIONAL STRETCH for Monday.
+See [docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md) for the integrated gate.
+Check [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md),
 [ROADMAP.md](ROADMAP.md), and [docs/D6_D7_BACKLOG.md](docs/D6_D7_BACKLOG.md) for
 the current handoff and evidence. A handoff or backlog is not, by itself,
 authorization to start a new phase.

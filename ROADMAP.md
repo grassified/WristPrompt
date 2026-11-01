@@ -347,7 +347,7 @@ No persistent conversation storage or new background infrastructure in D5.
 ## Day 6 — persistent conversations — implementation merged; physical acceptance pending
 
 D6-A–C are merged on main. D6-D nonphysical acceptance is complete; owner
-Galaxy Watch physical acceptance remains pending in #5. PR #21 remains open/draft.
+Galaxy Watch physical acceptance remains pending in #5. PR #21 is merged; #5 stays open for owner physical evidence.
 
 - [ ] D6-A: FIRST task, read-only architecture audit and decision/implementation
   plan before broad production changes. Select storage, schema/versioning,
@@ -375,7 +375,9 @@ emulator evidence in [docs/D7_C_PHOTO_LIBRARY.md](docs/D7_C_PHOTO_LIBRARY.md).
 durable attachment replay are implemented; see [docs/D7_D_IMAGE_INPUT.md](docs/D7_D_IMAGE_INPUT.md).
 #9 stays open for live-route/physical acceptance deferred to #12. D7-E combined composer implementation/automated acceptance is complete; see
 [docs/D7_E_COMPOSER.md](docs/D7_E_COMPOSER.md). #10 remains open for physical
-acceptance deferred to #12. D7-F/G implementation has not started.
+acceptance deferred to #12. D7-G integrated acceptance is in progress in [docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md).
+D7-H implementation is merged via PR #25; #18 stays open for physical/live evidence.
+D7-F (#11) is explicitly deferred OPTIONAL STRETCH for Monday.
 
 - [ ] D7-A: durable named custom USER prompt presets managed on phone (list,
   create/edit/rename/delete, multiline editor); no hidden always-on system prompt.
