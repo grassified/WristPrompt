@@ -1,4 +1,7 @@
-# Six-day release plan
+# Release roadmap
+
+Dated checkpoints below retain their original evidence. The 2026-11-02 status
+and D7-G acceptance supersede historical pending statements.
 
 **2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
 Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
@@ -14,7 +17,7 @@ BLOCKED by unavailable owner credential. See [acceptance](docs/D7_G_ACCEPTANCE.m
 **PASS WITH KNOWN DEBT.** Owner-confirmed physical refresh-regression restoration,
 ChatGPT-plan completed proof, normal sign-out/reauthorization with a transient
 anomaly, API 401/no-ChatGPT-fallback, explicit mode switching/back-to-plan and
-cancellation are recorded in DAY2_PHYSICAL_ACCEPTANCE.md and DAY2_REPORT.md.
+cancellation are recorded in docs/history/DAY2_PHYSICAL_ACCEPTANCE.md and docs/history/DAY2_REPORT.md.
 Remote revocation result, precise refresh telemetry and an exact per-mode restart
 matrix are not inferred. Offline sign-out is SKIPPED / NOT REQUIRED FOR DAY 2
 PHYSICAL GATE. D2-1 prior physical PASS remains valid and is not repeated.
@@ -26,7 +29,7 @@ real API key required. Day 2 does not fail for this constraint, and physical pai
 API success is not claimed.
 
 Day 3 development and consolidated automated/emulator acceptance: **PASS WITH
-KNOWN DEBT**, D3-A through D3-G complete for that scope. See DAY3_REPORT.md for
+KNOWN DEBT**, D3-A through D3-G complete for that scope. See docs/history/DAY3_REPORT.md for
 272 Wear / 70 mobile / 8 Python tests, both debug/release builds and lint,
 release isolation, and all 23 emulator scenarios. Physical RC gate remains open;
 funded BYOK and capability-dependent emulator auth constraints are not app failures.
@@ -37,7 +40,7 @@ Historical restoration and reauthorization anomalies remain unresolved.
 **PASS WITH KNOWN DEBT — COMPLETE.** D4-A through D4-H automated, emulator and
 targeted physical acceptance are complete. Owner-reported P1–P10 results, including
 the successful fixed-D4-H-APK P9 sign-out/OAuth/handoff/models/inference retest, are
-recorded in DAY4_REPORT.md section 11 and DAY4_STATUS.md's final matrix.
+recorded in docs/history/DAY4_REPORT.md section 11 and docs/history/DAY4_STATUS.md's final matrix.
 
 Latest D4-H baseline: Wear 343 tests / 45 suites, zero failures/errors/skips;
 Wear debug/release builds PASS; lint zero errors/six existing warnings; release
@@ -79,8 +82,8 @@ security requirements live in PROJECT_SPEC.md; choices and risks in DECISIONS.md
 Day 1 vertical-slice gate: **PASS**, confirmed by the user on 2026-10-28.
 Physical sign-in/handoff, model discovery and exact streamed output through
 response.completed are confirmed. Recovery/security hardening checks remain open.
-The handoff summary and Day 2 recommendations are in [DAY1_REPORT.md](DAY1_REPORT.md).
-The Day 1 engineering review is recorded in [DAY1_REVIEW.md](DAY1_REVIEW.md).
+The handoff summary and Day 2 recommendations are in [docs/history/DAY1_REPORT.md](docs/history/DAY1_REPORT.md).
+The Day 1 engineering review is recorded in [docs/history/DAY1_REVIEW.md](docs/history/DAY1_REVIEW.md).
 Do not begin BYOK, production chat, or Day 2 automatically.
 
 ## Day 1 Phase A — application foundation
@@ -108,7 +111,7 @@ complete the full Day 1 OAuth/inference gate below.
 - [x] Smoke-test unpaired emulator feedback and persisted host identity after restart.
 - [x] User-confirmed paired delivery on Galaxy Watch 7; phone and watch screenshots show successful setup (2026-10-28).
 
-Manual steps are in BRIDGE_TESTING.md. Phase B alone has no OAuth/credential transfer;
+Manual steps are in docs/BRIDGE_TESTING.md. Phase B alone has no OAuth/credential transfer;
 the receipt confirms setup metadata only. Phase B unit/build evidence is recorded
 in DECISIONS.md separately from paired-device acceptance.
 
@@ -126,7 +129,7 @@ in DECISIONS.md separately from paired-device acceptance.
 - [ ] Device-check Keystore persistence/key failure and interrupted/lost-ACK handoff.
 
 Phase C alone adds no inference, BYOK, refresh, or sign-out. Phase D follows below.
-See BRIDGE_TESTING.md for physical acceptance and known lifecycle limits.
+See docs/BRIDGE_TESTING.md for physical acceptance and known lifecycle limits.
 
 ## Day 1 Phase D — watch inference proof
 
@@ -143,7 +146,7 @@ See BRIDGE_TESTING.md for physical acceptance and known lifecycle limits.
 - [x] User confirmed WristPrompt works., response.completed and the exact-output success state on Galaxy Watch 7 (2026-10-28, 19:53 Europe/Istanbul).
 - [ ] Physical refresh/restart, limit handling, network interruption and account-change checks.
 
-INFERENCE_TESTING.md owns exact acceptance steps. Synthetic tests do not satisfy
+docs/INFERENCE_TESTING.md owns exact acceptance steps. Synthetic tests do not satisfy
 the physical gate. No BYOK, chat polish, sign-out, or Day 2 work is authorized.
 
 ## Day 1 engineering review
@@ -155,7 +158,7 @@ the physical gate. No BYOK, chat polish, sign-out, or Day 2 work is authorized.
   verify matching debug certificates, and check all untracked text plus git diff whitespace.
 - [x] Close the paired physical vertical-slice gate with user-confirmed exact output and response.completed; recovery checks remain open.
 
-See DAY1_REVIEW.md for findings, exact commands, limitations and next work.
+See docs/history/DAY1_REVIEW.md for findings, exact commands, limitations and next work.
 No architecture decision changed during review; DECISIONS.md is unchanged.
 
 ## Day 1 — prove the real vertical slice
@@ -195,8 +198,8 @@ revocation outcome and exact refresh telemetry are not claimed as physical facts
 
 ## Day 3 — watch chat
 
-Development acceptance: **PASS WITH KNOWN DEBT**. Evidence: DAY3_REPORT.md;
-phase-local history: DAY3_STATUS.md.
+Development acceptance: **PASS WITH KNOWN DEBT**. Evidence: docs/history/DAY3_REPORT.md;
+phase-local history: docs/history/DAY3_STATUS.md.
 
 - [x] D3-A readable round-screen shell, billing header and reachable fixed actions:
   VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR at default font settings.
@@ -224,7 +227,7 @@ phase-local history: DAY3_STATUS.md.
   fonts, process death, background/screen-off, untested account/billing boundaries,
   interrupted-stream recovery, remaining lifecycle/network and
   release-build checks. Successful funded BYOK remains unverified/constrained;
-  no purchase is required. See DAY3_REPORT.md for physical evidence boundaries.
+  no purchase is required. See docs/history/DAY3_REPORT.md for physical evidence boundaries.
 
 The Day 3 checklist above is a historical RC handoff. Day 4 P1–P10 now close
 the overlapping targeted sign-out/reauthentication, rotary/font, process restart,
@@ -233,7 +236,7 @@ boundaries and release-specific acceptance remain deferred.
 
 The original physical Day 3 release gate remains **DEFERRED FINAL PHYSICAL RC**,
 not checked off by development acceptance. Routine UI/state acceptance uses the
-emulator; final hardware/real-network checklist is in DAY3_REPORT.md. Capability-
+emulator; final hardware/real-network checklist is in docs/history/DAY3_REPORT.md. Capability-
 dependent production auth is NOT VERIFIABLE ON CURRENT EMULATOR LAB. D3-G's paired
 Data Layer smoke was BLOCKED — ENVIRONMENT (required pair unavailable); earlier
 capability isolation evidence remains unchanged. No production fallback.
@@ -259,7 +262,7 @@ optional voice are not open Day 4 closure gates.
   release-build lifecycle evidence remains separate deferred RC scope.
 - [x] D4-C network transitions: VERIFIED AUTOMATICALLY and six synthetic scenarios
   VERIFIED ON EMULATOR; owner-reported P5 real network-loss/recovery PASS — PHYSICAL.
-  See DAY4_STATUS.md and DAY4_REPORT.md for scope.
+  See docs/history/DAY4_STATUS.md and docs/history/DAY4_REPORT.md for scope.
 
 - [x] D4-D phone-independence audit/integrated regression and six synthetic
   presentation scenarios: VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR.
@@ -269,14 +272,14 @@ optional voice are not open Day 4 closure gates.
   refresh remains unobserved physically; automated coverage passes, no forced expiry.
 - [x] D4-E persistence/recovery edge cases: VERIFIED AUTOMATICALLY, 137 focused /
   340 full Wear tests, 70 mobile tests, both Wear builds/lint/release isolation.
-  No production change required; final durability matrix in DAY4_STATUS.md.
+  No production change required; final durability matrix in docs/history/DAY4_STATUS.md.
 - [x] D4-E targeted P3/P6 persistence acceptance: account/billing/model restored,
   GPT-5.6 Luna only. Destructive Keystore/AtomicFile tests intentionally not run;
   full reboot/platform interruption evidence remains deferred RC scope.
 - [x] D4-F harness consolidation: VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR;
   43-name catalog, bounded 11-case smoke, shared safe ADB helpers and separate
-  specialized runners. See WEAR_SCENARIOS.md and DAY4_STATUS.md; targeted physical gate closed.
-- [x] D4-G consolidated automated/emulator validation and DAY4_REPORT.md.
+  specialized runners. See docs/WEAR_SCENARIOS.md and docs/history/DAY4_STATUS.md; targeted physical gate closed.
+- [x] D4-G consolidated automated/emulator validation and docs/history/DAY4_REPORT.md.
 - [x] D4-H narrow P9 presentation remediation and deterministic pre-fix reproduction.
 - [x] Owner-reported P3 process restoration, P4 watch Wi-Fi/phone Bluetooth absent,
   P5 network recovery, P6 GPT-5.6 Luna, P7 rotary, P8 maximum font, P10 API separation.
@@ -299,7 +302,7 @@ for inference/refresh after setup. Document intentional lifecycle limits.
 **D5 COMPLETE — PASS WITH KNOWN DEBT.** Owner Galaxy Watch 7 retest R1–R10
 closes physical revalidation with R6 structured table rendering as non-blocking
 known debt. TalkBack remains untested, not required for closure; historical debt
-remains open. DAY5_G_REPORT.md and DAY5_H_REPORT.md preserve initial and final evidence.
+remains open. docs/history/DAY5_G_REPORT.md and docs/history/DAY5_H_REPORT.md preserve initial and final evidence.
 VERIFIED AUTOMATICALLY, VERIFIED ON EMULATOR and VERIFIED PHYSICALLY remain distinct.
 D6 and D7 are NOT STARTED. This handoff implements neither phase.
 
@@ -308,44 +311,44 @@ D6 and D7 are NOT STARTED. This handoff implements neither phase.
   compact billing disclosure and reachable Ask/Send/Stop. PASS WITH KNOWN DEBT;
   358 Wear tests, debug/release builds, lint and isolation pass; 43/43 emulator
   launches, targeted routes/rotary/2x font pass. Native confirmation and memory
-  comparison limits remain explicit in DAY5_STATUS.md; hardware deferred to D5-G.
+  comparison limits remain explicit in docs/history/DAY5_STATUS.md; hardware deferred to D5-G.
 - [x] D5-B: dense plain-text range/slice rows, replace transcript 80-character
   chunks, event-triggered 100 ms coalescing and explicit Latest. PASS WITH KNOWN
   DEBT — 394 Wear tests / 48 suites, 162 focused / 16 suites, debug/release/lint,
   isolation and 40 Python tests pass. Emulator long/Unicode/Latest/Stop/rotary/
   lifecycle/2x-font acceptance and bounded reset/memory sampling are recorded in
-  DAY5_STATUS.md. Streaming frame variance and release profiling remain D5-F;
+  docs/history/DAY5_STATUS.md. Streaming frame variance and release profiling remain D5-F;
   physical UX remains D5-G. No Markdown or persistence.
 - [x] D5-C: bounded native CommonMark/GFM table records, inert local link inspection,
   plain streaming current-answer tail and off-Main terminal reconciliation.
   PASS WITH KNOWN DEBT — 436 Wear tests / 49 suites; debug/release/lint/isolation,
   40 Python tests and 69/69 emulator launches pass. Targeted native rendering,
   horizontal code/rotary, Stop/Latest and 2x font acceptance recorded in
-  DAY5_C_REPORT.md. Frame/PSS measurements remain bounded debug evidence;
+  docs/history/DAY5_C_REPORT.md. Frame/PSS measurements remain bounded debug evidence;
   release profiling stays D5-F and physical Markdown UX stays D5-G.
 - [x] D5-D: model/account/settings presentation. Model rows show ONLY discovered
   display name (raw ID when that is all the service supplies) and selected state.
   No speed/quality/reasoning/capability/description/ranking metadata.
   PASS WITH KNOWN DEBT — 441 Wear tests / 50 suites; builds/lint/isolation and
   40 Python tests pass. Focused Watch7 rotary/2x/1,000-model and secondary-route
-  evidence in DAY5_D_REPORT.md; heap/accessibility consolidation stays D5-F,
+  evidence in docs/history/DAY5_D_REPORT.md; heap/accessibility consolidation stays D5-F,
   physical acceptance stays D5-G.
 - [x] D5-E: pure error/loading/recovery presentation and explicit existing actions.
   PASS WITH KNOWN DEBT — 456 Wear tests / 51 suites; final copy subset 17 tests;
   debug/release/lint/isolation, 40 Python tests pass. 19 targeted Watch7 fixtures
   at normal/2x font, actual recovery taps and rotary/Stop/Latest evidence in
-  DAY5_E_REPORT.md. No physical testing; D5-F/G remain separate.
+  docs/history/DAY5_E_REPORT.md. No physical testing; D5-F/G remain separate.
 - [x] D5-F: consolidated accessibility/performance/scenario acceptance. PASS WITH
   KNOWN DEBT — 459-test full run plus final 40/18-test focused components, builds,
   lint/isolation/Python pass; 77/77 emulator readiness, normal/2x interactions,
   30 rotary frame windows, 12 reset cycles and 4/4 process restarts. One narrow
-  large-font recovery fix. DAY5_F_REPORT.md / DAY5_F_METRICS.json distinguish
+  large-font recovery fix. docs/history/DAY5_F_REPORT.md / docs/history/DAY5_F_METRICS.json distinguish
   timing/memory evidence from spoken TalkBack and physical/release-device debt.
 - [x] D5-G: physical acceptance closed after final owner revalidation, PASS WITH
-  KNOWN DEBT. Initial failed observations remain in DAY5_G_REPORT.md.
+  KNOWN DEBT. Initial failed observations remain in docs/history/DAY5_G_REPORT.md.
 - [x] D5-H: automated/emulator remediation complete; full Wear 470-test run plus
   final narrow checks, builds/lint/isolation and focused emulator evidence recorded
-  in DAY5_H_REPORT.md; no new suite rerun for this handoff.
+  in docs/history/DAY5_H_REPORT.md; no new suite rerun for this handoff.
 - [x] D5-H physical revalidation: owner R1–R5/R7–R10 PASS; R6 table presentation
   FAIL / KNOWN DEBT, non-blocking. Spoken TalkBack untested; no battery-life claim.
 
@@ -402,7 +405,11 @@ This schedule is not implementation authorization in this documentation-only pas
 Use feature branches and issue-scoped PRs; never push implementation directly to main.
 Document actual checks and separate emulator from owner physical evidence.
 
-## Later phase — RC / release hardening and freeze — NOT STARTED
+## Source-release hardening — v0.1.0
+
+Documentation, bounded security audit and final automated gate are part of the
+2026-11-02 source release. Production signing, Play/store delivery and Play Data
+safety submission remain a separate future distribution gate.
 
 - [ ] Focused protocol/security regressions, both-app lint/build and release smoke.
 - [ ] Manifests, exported components, diagnostics, backups, crypto, signing,
@@ -463,7 +470,7 @@ to Day 2 hardening and remain unchecked. No Day 2 implementation has started.
 ## Day 2 Phase B — persistence verification (2026-10-28)
 
 Authorized scope: restart persistence and watch-direct inference only. Baseline
-Phase A persistent-toolchain evidence is in DAY2_BASELINE.md.
+Phase A persistent-toolchain evidence is in docs/history/DAY2_BASELINE.md.
 
 - [x] Trace protected registration/scopes/token/expiry/host storage and watch-direct transport.
 - [x] Persist per-registration model preference and revalidate against a current catalog.
@@ -478,7 +485,7 @@ Phase A persistent-toolchain evidence is in DAY2_BASELINE.md.
 phone-independent networking, direct model discovery and direct inference. Exact
 host bytes were not physically compared; storage-abstraction stability remains
 VERIFIED AUTOMATICALLY. Model restoration is separately PARTIAL and is not fully
-verified. See PERSISTENCE_TESTING.md for evidence and DAY2_STATUS.md for the concise
+verified. See docs/PERSISTENCE_TESTING.md for evidence and docs/history/DAY2_STATUS.md for the concise
 end-of-day checklist. Testing policy lives in AGENTS.md: batch non-blocking checks,
 never infer physical success from automation, and preserve safety/phase boundaries.
 No BYOK, sign-out, refresh redesign or D2-2 implementation is authorized by this
@@ -490,10 +497,10 @@ status update.
 - [x] VERIFIED AUTOMATICALLY: current official contracts reviewed; existing rotating-grant state machine mapped.
 - [x] VERIFIED AUTOMATICALLY: per-registration refresh locking, atomic latest-vault patching and stale-account protection.
 - [x] VERIFIED AUTOMATICALLY: shared fakeable clock, definitely-unsent transport distinction, conservative uncertain outcomes and terminal/configuration failure matrix.
-- [x] VERIFIED AUTOMATICALLY: numeric Unix-seconds / ISO hint handling checked against the official cookbook-linked Sign-in devkit; malformed values remain conservative. Focused upgrade regression physically RESOLVED; see REFRESH_REGRESSION_REVIEW.md.
+- [x] VERIFIED AUTOMATICALLY: numeric Unix-seconds / ISO hint handling checked against the official cookbook-linked Sign-in devkit; malformed values remain conservative. Focused upgrade regression physically RESOLVED; see docs/history/REFRESH_REGRESSION_REVIEW.md.
 - [ ] PENDING END-OF-DAY PHYSICAL TEST: natural renewal with same registration, no phone consent/new client and successful inference.
 
-See REFRESH_REVIEW.md and DAY2_STATUS.md. No immediate device gate, credential
+See docs/history/REFRESH_REVIEW.md and docs/history/DAY2_STATUS.md. No immediate device gate, credential
 schema migration, real token manipulation, sign-out, BYOK or model-restoration fix.
 
 
@@ -504,7 +511,7 @@ schema migration, real token manipulation, sign-out, BYOK or model-restoration f
 - [x] VERIFIED AUTOMATICALLY: same-client reauthorization without retained ID hint; idempotence, storage-failure and process-recreation cases.
 - [x] VERIFIED PHYSICALLY: normal sign-out / intended-account reauthorization PASS WITH TRANSIENT REAUTHORIZATION ANOMALY. Exact post-reauth client suffix/remote result not supplied. Offline sign-out SKIPPED / NOT REQUIRED FOR DAY 2 PHYSICAL GATE.
 
-See SIGN_OUT_REVIEW.md and the combined DAY2_STATUS.md checklist. No immediate
+See docs/history/SIGN_OUT_REVIEW.md and the combined docs/history/DAY2_STATUS.md checklist. No immediate
 real sign-out or revocation was performed. No BYOK, Day 3 chat or model-debt fix.
 
 ## Day 2 Phase E — protected BYOK and explicit billing mode
@@ -512,8 +519,8 @@ real sign-out or revocation was performed. No BYOK, Day 3 chat or model-debt fix
 VERIFIED AUTOMATICALLY: separate protected API-key vault, explicit persisted mode,
 phone-to-watch versioned context-bound transfer and persistence ACK, API model-list
 test/decoder, shared Responses stream and no automatic billing fallback. Scope
-and test matrix: BYOK_REVIEW.md. Real API request, invalid-key/no-fallback and mode
-restart checks are PENDING END-OF-DAY PHYSICAL TEST in DAY2_STATUS.md. No production
+and test matrix: docs/history/BYOK_REVIEW.md. Real API request, invalid-key/no-fallback and mode
+restart checks are PENDING END-OF-DAY PHYSICAL TEST in docs/history/DAY2_STATUS.md. No production
 chat, provider, vision or Day 3 model-restoration work was included. Do not treat
 API model listing alone as a completed inference or physical acceptance gate.
 
@@ -526,7 +533,7 @@ usage-management guidance/action. Existing per-mode model preferences are
 validated against current catalogs; mode-switch regression coverage added.
 162 Wear / 64 mobile tests, both debug builds, both lint tasks and git diff
 whitespace checks pass. PENDING END-OF-DAY PHYSICAL TEST: consolidated connection,
-transfer/usage and independent-billing acceptance in DAY2_STATUS.md.
+transfer/usage and independent-billing acceptance in docs/history/DAY2_STATUS.md.
 No physical gate is checked off; Terra → Sol restoration, final chat UI and voice
 remain deferred. This does not authorize Day 3 implementation.
 
@@ -535,10 +542,10 @@ remain deferred. This does not authorize Day 3 implementation.
 
 VERIFIED AUTOMATICALLY: all eleven targeted cases have synthetic audit/test
 coverage, with stale phone-result, expired retry, cross-context proof and current
-plan-error diagnostic fixes. Full matrix/security findings: DAY2_FAILURE_MATRIX.md.
+plan-error diagnostic fixes. Full matrix/security findings: docs/history/DAY2_FAILURE_MATRIX.md.
 172 Wear / 69 mobile tests, both debug builds, both lint tasks and git diff
 whitespace checks pass. Physical transfer/storage/recovery/billing acceptance is
-PENDING END-OF-DAY PHYSICAL TEST in DAY2_STATUS.md; no physical gate is checked
+PENDING END-OF-DAY PHYSICAL TEST in docs/history/DAY2_STATUS.md; no physical gate is checked
 off. Existing earliest_refresh_at interpretation remains BLOCKED. No Day 3 chat,
 voice or model-restoration work is authorized by this phase.
 
@@ -547,7 +554,7 @@ voice or model-restoration work is authorized by this phase.
 
 The earlier dated Phase C–G pending statements above are implementation handoff
 history. Current owner-supplied results and evidence limits are authoritative in
-DAY2_REPORT.md / DAY2_PHYSICAL_ACCEPTANCE.md. No repeat acceptance session or
+docs/history/DAY2_REPORT.md / docs/history/DAY2_PHYSICAL_ACCEPTANCE.md. No repeat acceptance session or
 Day 3 implementation is authorized by recording this stage result.
 
 ## D6-B implementation — 2026-10-31

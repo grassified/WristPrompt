@@ -17,8 +17,13 @@ bounded handoff state; API-key entry is not persisted by the phone. Both manifes
 disable backup and exclude app data from cloud/device-transfer backup.
 Encryption cannot protect credentials from every compromised device/input method.
 
-Conversation and replay state are memory-only; process death loses chat. Settings,
-registration identifiers and protected credentials are persisted separately.
+Completed conversations and validated replay are persisted locally on the watch,
+separately from display projections. Imported photos and generated images use
+bounded app-private no-backup files with durable ownership metadata. Phone-managed
+presets and photo-library synchronization use Wear Data Layer; images selected for
+inference are sent to OpenAI. Unsent drafts and streaming tokens are not restored
+after process death. Settings, registration identifiers and protected credentials
+are persisted separately.
 WristPrompt does not implement cloud conversation synchronization. There are no
 analytics, advertising or remote crash-reporting SDKs in the inspected production
 dependencies/source. Safe diagnostics expose bounded codes rather than raw tokens,

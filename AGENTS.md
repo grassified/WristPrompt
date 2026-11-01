@@ -172,7 +172,7 @@ changes require repository/security/link/whitespace checks, not full D5 acceptan
 D5 is PASS WITH KNOWN DEBT; the physical Markdown table-rendering debt and
 untested TalkBack remain documented. D6-A–D implementation/nonphysical acceptance
 is merged on `main` (PR #21).
-D7-A–E and D7-H implementation is merged (PRs #22/#23/#25/#26/#27/#28).
+D7-A–F and D7-H implementation is merged (PRs #22/#23/#25/#26/#27/#28/#30).
 Owner core physical acceptance is complete for v0.1.0; #1 and optional #11 remain
 non-blocking. Live paid API-key checks remain unverified.
 See [docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md) for the integrated gate.

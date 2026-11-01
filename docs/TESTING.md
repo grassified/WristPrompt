@@ -61,12 +61,12 @@ source/manifest/DEX separation. Process-restart commands kill/force-stop the ver
 emulator app; connectivity/phone-absence runners also reconstruct synthetic fixtures
 in fresh emulator processes. They do not prove radio, live credentials or hardware
 behavior. Do not run these against physical hardware. See
-[../WEAR_SCENARIOS.md](../WEAR_SCENARIOS.md) for readiness ACK/PID/lifecycle semantics.
+[WEAR_SCENARIOS.md](WEAR_SCENARIOS.md) for readiness ACK/PID/lifecycle semantics.
 77/77 ready fixtures does not mean 77 visual reviews.
 
 Paired-emulator nodes/RPC work, while reciprocal CapabilityClient discovery remains
 unresolved: **NOT VERIFIABLE ON CURRENT EMULATOR LAB** for capability-dependent auth.
-Keep production gating. See [../EMULATOR_CAPABILITY_INVESTIGATION.md](../EMULATOR_CAPABILITY_INVESTIGATION.md).
+Keep production gating. See [historical capability investigation](history/EMULATOR_CAPABILITY_INVESTIGATION.md).
 
 ## Evidence and physical acceptance
 
@@ -75,11 +75,11 @@ Keep production gating. See [../EMULATOR_CAPABILITY_INVESTIGATION.md](../EMULATO
 - VERIFIED PHYSICALLY: explicit owner/device results, with scope and limitations.
 - PENDING END-OF-DAY PHYSICAL TEST / BLOCKED: preserve the reason and dependency.
 
-D5-F's recorded baseline is in [../DAY5_F_REPORT.md](../DAY5_F_REPORT.md),
-[../DAY5_F_METRICS.json](../DAY5_F_METRICS.json) and [../DAY5_STATUS.md](../DAY5_STATUS.md).
+D5-F's recorded baseline is in [DAY5_F_REPORT.md](history/DAY5_F_REPORT.md),
+[DAY5_F_METRICS.json](history/DAY5_F_METRICS.json) and [DAY5_STATUS.md](history/DAY5_STATUS.md).
 Do not substitute old runs for newly executed checks. D5 physical closure is PASS
 WITH KNOWN DEBT after the owner's Galaxy Watch 7 R1–R10 final retest. Initial P1–P13
-observations and final R results remain in DAY5_G_REPORT.md; R6 structured tables
+observations and final R results remain in docs/history/DAY5_G_REPORT.md; R6 structured tables
 remain non-blocking debt and spoken TalkBack remains untested. Never infer missing
 physical results. D6/D7 acceptance belongs to their issues, not this handoff.
 

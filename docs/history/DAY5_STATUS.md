@@ -98,7 +98,7 @@ dependency-merged baseline profiles; debug fixtures remain absent from release.
 Documentation/license/ignore-only pre-publication pass; no production or build
 behavior change. D5-F remains PASS WITH KNOWN DEBT; D5-G is PHYSICAL ACCEPTANCE
 PENDING; D6 is NOT STARTED. No physical test or new D5 matrix was run.
-[Publication audit](docs/PUBLICATION_AUDIT.md) records passing source-publication
+[Publication audit](../PUBLICATION_AUDIT.md) records passing source-publication
 gates after the owner-authorized, exact-artifact Google linking exception. Base
 license stays GPL-3.0-only; third-party licenses remain intact. Owner-authorized
 local-path history sanitation preserves all 28 engineering commits; original/new

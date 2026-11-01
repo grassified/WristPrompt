@@ -72,30 +72,24 @@ row keys and ranges are neither canonical replay nor a durable schema.
 Markdown uses CommonMark/GFM tables and Compose, without WebView. Raw HTML is inert;
 remote images are not fetched. Links have local inspection rather than automatic
 navigation. Code supports horizontal touch with vertical rotary; tables use bounded
-Wear-adapted records/fallbacks. See DAY5_C_REPORT.md for limits and failure fallback.
+Wear-adapted records/fallbacks. See docs/history/DAY5_C_REPORT.md for limits and failure fallback.
 
-## Future persistence boundary
+## Durable state and attachments
 
-D6-C wires bounded history, inert startup restoration and explicit continuation;
-see [D6_C_HISTORY.md](D6_C_HISTORY.md). Owner/model/route mismatches cannot send.
-Local identity reads permit offline viewing without bypassing inference validation.
+D6 uses platform SQLite for canonical completed exchanges, metadata and validated
+replay, separately from disposable display projections. History restores idle;
+continuation requires explicit Send and compatible account/model/billing ownership.
+No streaming-token persistence or automatic replay. See
+[D6_B_STORAGE.md](D6_B_STORAGE.md) and [D6_C_HISTORY.md](D6_C_HISTORY.md).
 
-D6-B implements the canonical store/checkpoint boundary described in
-[D6_B_STORAGE.md](D6_B_STORAGE.md). History/startup selection is D6-C; the remaining
-paragraphs below describe the historical D5 baseline and original D6-A plan.
+D7 adds phone-managed presets and a private imported-photo library synchronized
+through bounded Data Layer protocols. Sent attachments and generated images have
+conversation-owned private files and durable metadata. Missing files fail clearly;
+cleanup cannot silently substitute library content. Image generation shares the
+existing inference/Stop/completion owner, with API-key-only capability gating.
+See [D7_D_IMAGE_INPUT.md](D7_D_IMAGE_INPUT.md) and
+[D7_F_IMAGE_GENERATION.md](D7_F_IMAGE_GENERATION.md).
 
-Local D6-A design is recorded in [D6_A_PERSISTENCE_ARCHITECTURE.md](D6_A_PERSISTENCE_ARCHITECTURE.md).
-It selects platform SQLite, typed content and separate transactional replay; no
-production storage is implemented or accepted by this documentation change.
-
-D6 is NOT STARTED. Durable DISPLAY TRANSCRIPT and RESPONSES REPLAY CONTEXT require
-separate versioned records and compatibility decisions; do not serialize D5
-presentation objects. No storage write per streaming token. The next developer
-step is D6-A, a read-only architecture audit first. D5 is complete with known debt.
-D6 must anticipate Text/ImageAttachment content parts, app-private binary files,
-transactional completed exchanges and separate replay records. D7 adds phone-owned
-presets and an imported photo library; normal inference remains watch-direct.
-See CODEX_HANDOFF.md and D6_D7_BACKLOG.md for authorized future product scope.
-
-See [../PROJECT_SPEC.md](../PROJECT_SPEC.md), [../DECISIONS.md](../DECISIONS.md),
-[TESTING.md](TESTING.md) and [CODEX_HANDOFF.md](CODEX_HANDOFF.md).
+Current acceptance and known limits: [D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md).
+Protocol and security ownership: [specification](../PROJECT_SPEC.md),
+[decisions](../DECISIONS.md) and [testing](TESTING.md).

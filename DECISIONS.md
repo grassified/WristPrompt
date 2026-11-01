@@ -325,7 +325,7 @@ process restart and is surfaced by DataStore/StateFlow when the user opens setup
 within the request lifetime. While already displayed, the receipt is a historical
 notice, not an active OAuth session. The setup notice grants no permission to
 transfer credentials. Phase C must add its own watch pending transaction and
-secure profile-return path; see [BRIDGE_TESTING.md](BRIDGE_TESTING.md).
+secure profile-return path; see [docs/BRIDGE_TESTING.md](docs/BRIDGE_TESTING.md).
 
 Logging uses an enum-only `BridgeLog` sink. Arbitrary values are fully redacted
 without evaluating `toString`; protocol DTOs also redact that method. Codec
@@ -359,7 +359,7 @@ local persistence on an emulator; it does not prove paired Data Layer delivery.
 
 Paired request/receipt delivery, background service wake-up, physical Galaxy
 Watch 7 behavior, and minimum-API hardware remain manual acceptance gates in
-BRIDGE_TESTING.md. No OAuth, credential transfer, or Phase C work is included.
+docs/BRIDGE_TESTING.md. No OAuth, credential transfer, or Phase C work is included.
 
 ## D06 — Phase C authorization and encrypted handoff
 
@@ -458,7 +458,7 @@ Both final APK signatures verified and certificate digests matched.
 Ran git diff --check plus per-file no-index whitespace checks because source is
 still untracked. PROJECT_SPEC.md remains unchanged. No staging, commit, push,
 inference, BYOK, or Phase D work occurred. Manual gates stay open in ROADMAP.md;
-BRIDGE_TESTING.md contains real-pair consent, restart, denial and lost-ACK checks.
+docs/BRIDGE_TESTING.md contains real-pair consent, restart, denial and lost-ACK checks.
 Phone process death drops untransferred tokens and requires fresh watch setup;
 release acceptance also needs actual Keystore/key-failure and minimum-API checks.
 
@@ -561,7 +561,7 @@ exported, injected or used. The physical proof and refresh gates remain unchecke
 Ran git diff --check and per-file no-index whitespace checks for untracked source;
 validated XML and local documentation links. PROJECT_SPEC.md is unchanged. No
 staging, commits, pushes, BYOK, production chat polish or Day 2 work occurred.
-Exact physical installation/acceptance steps are in INFERENCE_TESTING.md.
+Exact physical installation/acceptance steps are in docs/INFERENCE_TESTING.md.
 
 ## D08 — stream the account model catalog with a separate limit
 
@@ -624,7 +624,7 @@ subsequently confirmed all three PASS on 2026-10-28; D2-1 is VERIFIED PHYSICALLY
 for authentication/account/reboot persistence and phone-independent discovery/
 inference. Model restoration is separately PARTIAL: Terra changed to Sol after
 restart while Terra remained listed, deferred as low-priority Day 3 debt.
-Exact steps, evidence and state inventory are in PERSISTENCE_TESTING.md. Tests use synthetic records and one encrypted JVM-file
+Exact steps, evidence and state inventory are in docs/PERSISTENCE_TESTING.md. Tests use synthetic records and one encrypted JVM-file
 recreation; Android Keystore, OEM reboot persistence, actual watch internet routing
 and natural expiry remain physical evidence. No secrets/host identifiers were
 logged, and no new logging path or diagnostic payload was added.
@@ -633,7 +633,7 @@ logged, and no new logging path or diagnostic payload was added.
 Phase B automated verification: both debug builds and lint passed, and all 108
 Wear tests passed with zero failures/errors/skips. Lint warnings are unchanged.
 Exact commands, evidence limitations and remaining hardware checks are recorded
-in PERSISTENCE_TESTING.md. That automated run did not itself establish physical
+in docs/PERSISTENCE_TESTING.md. That automated run did not itself establish physical
 A/B/C behavior; the later user confirmation above supplies that evidence.
 
 
@@ -659,7 +659,7 @@ Do not guess it. Missing/JSON-null uses the existing margin. Unknown non-null
 metadata defers renewal while the bearer is valid and blocks expired renewal
 with a configuration category; credentials remain preserved. The interpretation
 is BLOCKED pending an authoritative contract, not silently treated as supported.
-No vault schema migration or new auth/billing path. See REFRESH_REVIEW.md for
+No vault schema migration or new auth/billing path. See docs/history/REFRESH_REVIEW.md for
 sources, matrix and pending end-of-day device evidence. D2-1 model debt unchanged.
 
 
@@ -683,7 +683,7 @@ reconstruction rather than reviving the session. Storage errors never report
 local success. Same-registration OAuth reuses client/host without id_token_hint,
 as current docs specify after sign-out. No billing/account fallback.
 
-See SIGN_OUT_REVIEW.md for sources, state/race review and test evidence. Device
+See docs/history/SIGN_OUT_REVIEW.md for sources, state/race review and test evidence. Device
 sign-out/re-login/revocation is PENDING END-OF-DAY PHYSICAL TEST; no real session
 was revoked by the agent. Prior model-selection and earliest-refresh issues remain.
 
@@ -702,8 +702,8 @@ storage; identical retries do not rewrite the key. Real Test API key uses GET
 /v1/models with the API data[].id decoder, separate from the account catalog.
 Listing is not proof of Responses support or quota; unsupported models fail safely.
 Local BYOK is an advanced user-owned client-side tradeoff, not server isolation.
-See BYOK_REVIEW.md for current official sources, security/race boundaries and
-limits; DAY2_STATUS.md owns pending end-of-day device checks.
+See docs/history/BYOK_REVIEW.md for current official sources, security/race boundaries and
+limits; docs/history/DAY2_STATUS.md owns pending end-of-day device checks.
 
 
 ## D14 — Phase F connection settings and explicit usage language
@@ -729,7 +729,7 @@ retry envelope is prepared, hide the field during transfer/retry, and leave it
 cleared after acknowledged protected storage. No plaintext field persistence or
 new transfer/authentication contract. Existing wrong-ACK/expiry coverage now also
 checks cleared entry during retry. Final automated evidence and the consolidated
-physical checklist live in DAY2_STATUS.md. No Day 3 chat or voice implementation.
+physical checklist live in docs/history/DAY2_STATUS.md. No Day 3 chat or voice implementation.
 
 
 ## D15 — Phase G failure isolation and stale action rejection
@@ -752,7 +752,7 @@ credentials. Keep actual HTTP status (including 200 with response.failed), bound
 code/shape/request ID and static UI messages, excluding provider text. No reset
 estimate, automatic billing fallback or generation replay.
 
-See DAY2_FAILURE_MATRIX.md and DAY2_STATUS.md for synthetic failure coverage,
+See docs/history/DAY2_FAILURE_MATRIX.md and docs/history/DAY2_STATUS.md for synthetic failure coverage,
 security review, final validation and consolidated end-of-day physical checks.
 Actual Android Keystore/AtomicFile faults are not established by fake-store/JVM
 AES-GCM tests. Never destructively test key loss on the real watch. Prior unknown
@@ -777,7 +777,7 @@ new mandatory local metadata or vault migration. Missing known expiry is unsafe.
 Keep per-registration locks, durable intent, atomic rotating-token replacement,
 conservative uncertain outcomes and all sign-out/BYOK behavior. Only timing
 interpretation/static error classification changed. Full evidence, source links
-and exact registration-preserving retest: REFRESH_REGRESSION_REVIEW.md.
+and exact registration-preserving retest: docs/history/REFRESH_REGRESSION_REVIEW.md.
 Broad acceptance is STOPPED pending that physical result. Real BYOK completion
 is BLOCKED by no funded API credential, not a product failure; no purchase required.
 
@@ -810,7 +810,7 @@ Only presentation and its tests change: existing ViewModels, model-preference
 read/write callbacks, auth/refresh/sign-out, stores, transport and billing router
 remain unchanged. Terra -> Sol is still D3-2; text chat is D3-3; streaming chat
 integration is later Day 3. Physical readability is not claimed; evidence and
-the single end-of-day check are in DAY3_STATUS.md. Prior D16 STOPPED wording is
+the single end-of-day check are in docs/history/DAY3_STATUS.md. Prior D16 STOPPED wording is
 historical and superseded by final Day 2 acceptance, not a current gate.
 
 ## Emulator capability investigation — 2026-10-29
@@ -826,7 +826,7 @@ emulator-only runner provide safe retests without credentials or alternate
 transports. Original lab signing key continuity requires its existing
 ANDROID_USER_HOME; the default debug key differed and updates were rejected safely.
 Full evidence, passing validation, unresolved attribution and recovery steps:
-[EMULATOR_DATA_LAYER_REPORT.md](EMULATOR_DATA_LAYER_REPORT.md).
+[docs/history/EMULATOR_DATA_LAYER_REPORT.md](docs/history/EMULATOR_DATA_LAYER_REPORT.md).
 
 
 ## Emulator capability follow-up — 2026-10-29
@@ -846,7 +846,7 @@ Capability-dependent authentication is NOT VERIFIABLE ON CURRENT EMULATOR LAB;
 defer it to physical RC acceptance unless discovery recovers. App-scoped API
 results do not prove that unrelated applications have the same problem. Full
 evidence and proposed, unimplemented debug scenario strategy are in
-[EMULATOR_CAPABILITY_INVESTIGATION.md](EMULATOR_CAPABILITY_INVESTIGATION.md).
+[docs/history/EMULATOR_CAPABILITY_INVESTIGATION.md](docs/history/EMULATOR_CAPABILITY_INVESTIGATION.md).
 
 ## D18 — one bounded in-memory text conversation with explicit replay (2026-10-29)
 
@@ -901,7 +901,7 @@ therefore no new include parameter is added to the plan request. Wear text entry
 uses the platform RemoteInput activity and keyboard; Done returns a draft for a
 separate app Send action. No voice feature, new dependency, auth/storage/billing
 contract or Data Layer routing change. D3-D retains detailed streaming/Stop and
-scroll-follow hardening. Current test/emulator evidence belongs in DAY3_STATUS.md.
+scroll-follow hardening. Current test/emulator evidence belongs in docs/history/DAY3_STATUS.md.
 
 ## D19 — serialized generation ownership and Stop (2026-10-29)
 
@@ -952,7 +952,7 @@ No endpoint, payload field, OAuth, credential format, billing selection or Data
 Layer routing change. A standalone debug-source-set synthetic preview exercises
 the real ViewModel/session and shared chat renderer without credential stores,
 network, capability bypass or intent-provided data. It is absent from the merged
-release manifest. DAY3_STATUS.md owns exact validation and emulator limitations.
+release manifest. docs/history/DAY3_STATUS.md owns exact validation and emulator limitations.
 
 ## D20 — terminal state recovery and current model ownership (2026-10-29)
 
@@ -981,7 +981,7 @@ other action controls remain readable. D18/D19 retain replay and transport owner
 
 Official [errors and recovery](https://developers.openai.com/siwc/token-sharing-open-source/errors-and-recovery)
 rechecked 2026-10-29. No OAuth protocol, inference request field, credential format,
-storage, production Data Layer or billing-route change. DAY3_STATUS.md owns current
+storage, production Data Layer or billing-route change. docs/history/DAY3_STATUS.md owns current
 test/emulator evidence; these rules do not establish physical anomaly resolution.
 
 ## D21 — offline debug scenarios and release isolation (2026-10-29)
@@ -998,8 +998,8 @@ Validate absence from both merged release manifest and release APK DEX, absence 
 production navigation references, and forbidden persistence/network dependencies
 with tools/check_scenario_isolation.py. Fresh ready acknowledgements are fixed,
 non-secret, debug-only developer artifacts. Activity recreation retains a VM;
-process persistence is intentionally not simulated. WEAR_SCENARIOS.md owns the
-launcher contract; DAY3_STATUS.md owns D3-F evidence, not final Day 3 acceptance.
+process persistence is intentionally not simulated. docs/WEAR_SCENARIOS.md owns the
+launcher contract; docs/history/DAY3_STATUS.md owns D3-F evidence, not final Day 3 acceptance.
 
 ## D22 — retained-process lifecycle and composer interruption (2026-10-29)
 
@@ -1035,7 +1035,7 @@ network transitions are D4-C. Neither phase is implemented by this decision.
 Repository code and official Android [ViewModel lifetime](https://developer.android.com/topic/libraries/architecture/viewmodel),
 [Compose state](https://developer.android.com/develop/ui/compose/state), and
 [Activity Result registration](https://developer.android.com/training/basics/intents/result)
-were reviewed. DAY4_STATUS.md owns automated/emulator evidence and pending
+were reviewed. docs/history/DAY4_STATUS.md owns automated/emulator evidence and pending
 physical checks; emulator sleep is not Galaxy Watch power-management evidence.
 
 
@@ -1056,7 +1056,7 @@ chat. A killed client cannot establish the remote generation/usage outcome;
 replaying its previous prompt is prohibited. Existing durable refresh uncertainty
 and sign-out cleanup remain fail-closed; no credential schema or recovery change.
 Actual background am-kill/task-resume and separately labelled force-stop acceptance
-are recorded in DAY4_STATUS.md; hardware reboot/Keystore acceptance is separate.
+are recorded in docs/history/DAY4_STATUS.md; hardware reboot/Keystore acceptance is separate.
 
 Official Android [saved UI state](https://developer.android.com/develop/ui/compose/state-saving)
 and [process lifetime](https://developer.android.com/guide/components/activities/process-lifecycle)
@@ -1104,7 +1104,7 @@ chat-snapshot/chunk-cache rule and existing centered 80-character renderer remai
 D5-D constraint: picker rows display only the authoritative discovered name and
 selection state; raw ID when no friendly name is supplied. No inferred speed,
 quality, reasoning, capability, descriptions or ranking. D5-B/C/D/E and D6 remain
-unstarted. DAY5_STATUS.md owns evidence and physical/performance limitations.
+unstarted. docs/history/DAY5_STATUS.md owns evidence and physical/performance limitations.
 
 ## D25 — bounded plain-text transcript presentation (2026-10-30)
 
@@ -1171,7 +1171,7 @@ material runtime bottleneck. Consolidated release profiling remains D5-F.
 
 Official native scrolling semantics checked against the pinned local API and
 [Android's TransformingLazyColumnState reference](https://developer.android.com/reference/kotlin/androidx/wear/compose/foundation/lazy/TransformingLazyColumnState).
-DAY5_STATUS.md owns exact test/emulator/performance evidence and physical debt.
+docs/history/DAY5_STATUS.md owns exact test/emulator/performance evidence and physical debt.
 
 ## 2026-10-30 — D5-C disposable native Markdown
 
@@ -1183,7 +1183,7 @@ states Java 11+, Android API 19+ on a best-effort basis; this app uses JDK 17 an
 minSdk 30. Both JARs have Java 11 class version 55. Artifact sizes are 220,558 and
 24,482 bytes (245,040 combined). Both use BSD-2-Clause; preserve the upstream
 notice in THIRD_PARTY_NOTICES.md and accompany binary distribution at D7/RC.
-Repository LICENSE remains unchanged. Build evidence is in DAY5_C_REPORT.md.
+Repository LICENSE remains unchanged. Build evidence is in docs/history/DAY5_C_REPORT.md.
 
 Canonical ChatState/ChatConversation, replay, transport, authentication and billing
 remain authoritative and unchanged. One retained, visibility-gated presentation
@@ -1246,7 +1246,7 @@ Account & Connection places explicit billing route before the separate ChatGPT
 and API controls. Settings contains installed version, memory-only conversation
 behavior and Diagnostics; engineering/proof details remain secondary. This is
 presentation only: no protocol, routing, credential, persistence or navigation
-owner change. Evidence and limitations: DAY5_D_REPORT.md.
+owner change. Evidence and limitations: docs/history/DAY5_D_REPORT.md.
 
 ## D28 — pure error/recovery presentation (2026-10-30)
 
@@ -1266,7 +1266,7 @@ no empty assistant row. Markdown failure remains exact-source display fallback,
 not inference failure; terminal metadata remains outside rich blocks. Diagnostics
 retain existing allowlisted protocol category/HTTP detail; normal errors contain
 only static product copy. No timer, polling, observer, retry or new persistence.
-Evidence and complete copy matrix: DAY5_E_REPORT.md. D5-F/G and D6 remain separate.
+Evidence and complete copy matrix: docs/history/DAY5_E_REPORT.md. D5-F/G and D6 remain separate.
 
 
 ## 2026-10-30 — GPLv3 and public development handoff
@@ -1332,7 +1332,7 @@ structured output/reasoning retains the prior validation/replay path. Only
 response.completed commits success. No real service payload was captured, so
 attribution to the owner's exact physical failure remains an inference. Official
 Responses streaming and SIWC inference contracts were rechecked; no endpoint,
-request fields, credential selection or auth change. See DAY5_H_REPORT.md.
+request fields, credential selection or auth change. See docs/history/DAY5_H_REPORT.md.
 
 Spacing is owned by logical items/blocks. Bounded shell/Markdown continuation
 segments carry continuation metadata and receive no paragraph gap; real blocks

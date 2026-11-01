@@ -67,7 +67,7 @@ across eight report/setup paths contained personal home paths. The owner authori
 sanitizing them. All 28 main commits retain sequence, author/committer metadata,
 timestamps, messages and source/build content; only Markdown paths changed.
 Original evidence commit IDs map to sanitized IDs in [HISTORY_REWRITE.md](HISTORY_REWRITE.md).
-Measurements and DAY5_F_METRICS.json are unchanged. No engineering history was squashed.
+Measurements and docs/history/DAY5_F_METRICS.json are unchanged. No engineering history was squashed.
 
 Main's sanitized pre-handoff history has 448 reachable file blobs. App-managed
 checkpoint refs/reflogs and the external recovery bundle may retain original
@@ -97,7 +97,7 @@ APK/AAB, IDE/cache/build state, media, heap or profiler dump was found. Source X
 assets and the Gradle wrapper JAR are intentional. Local ignored local.properties
 contains only an SDK setting and is not published; ignored build outputs remain
 local. No owner credentials/app data were read, changed, deleted or revoked.
-Safe synthetic aggregate DAY5_F_METRICS.json remains unchanged, without chat text,
+Safe synthetic aggregate docs/history/DAY5_F_METRICS.json remains unchanged, without chat text,
 private account details, credentials, personal paths or device identifiers.
 
 Ignore rules cover Android/build/IDE/native/capture, credentials/signing,
@@ -165,9 +165,9 @@ only then separately authorize D6-0 read-only persistence architecture audit.
 
 Handoff: .gitignore, README.md, LICENSE, LICENSE_EXCEPTION.md, AGENTS.md,
 PROJECT_SPEC.md, ROADMAP.md, DECISIONS.md, DEVELOPMENT.md, CONTRIBUTING.md,
-SECURITY.md, PRIVACY.md, CHANGELOG.md, THIRD_PARTY_NOTICES.md, DAY5_STATUS.md,
+SECURITY.md, PRIVACY.md, CHANGELOG.md, THIRD_PARTY_NOTICES.md, docs/history/DAY5_STATUS.md,
 .github/pull_request_template.md, and docs/{ARCHITECTURE,TESTING,CODEX_HANDOFF,
 PUBLICATION_AUDIT,HISTORY_REWRITE}.md. Current report emulator-label sanitation:
-DAY3_STATUS.md, DAY4_REPORT.md, DAY4_STATUS.md, DAY5_C_REPORT.md, DAY5_E_REPORT.md.
+docs/history/DAY3_STATUS.md, docs/history/DAY4_REPORT.md, docs/history/DAY4_STATUS.md, docs/history/DAY5_C_REPORT.md, docs/history/DAY5_E_REPORT.md.
 Historical path-only changes are listed in HISTORY_REWRITE.md; current source,
 build/test/tooling and aggregate measurements are unchanged.

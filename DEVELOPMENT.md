@@ -1,7 +1,7 @@
 # Development baseline
 
 This document covers setup only. Product/security rules remain in PROJECT_SPEC.md
-and AGENTS.md. The dated audit and Git inventory are in DAY2_BASELINE.md.
+and AGENTS.md. The dated audit and Git inventory are in docs/history/DAY2_BASELINE.md.
 
 ## Pinned build
 
