@@ -1,7 +1,19 @@
 # D6/D7 implementation backlog
 
+**2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
+Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
+presets, photo sync, supported multi-image inference, composer/IME, general UI and
+ChatGPT-plan Thinking. Default-only plan Thinking is intentional; explicit API-key
+native effort was not physically tested (automated contract coverage passes).
+#1 remains readable table-fallback debt; optional #11 live API-key generation is
+BLOCKED by unavailable owner credential. See [acceptance](D7_G_ACCEPTANCE.md).
+
+
 D5 is PASS WITH KNOWN DEBT — COMPLETE. D6-A–C are merged through #16/#17;
-D6-D acceptance and D7 implementation remain pending. This document is planning,
+D6-D implementation/nonphysical acceptance is merged via #21. D7-A–F and D7-H
+are merged via #22/#23/#25/#26/#27/#28/#30. Core owner acceptance passed;
+see [D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md). #1 and optional #11 remain open.
+This document is planning,
 not permission to implement subsequent phases.
 
 [Live open backlog](https://github.com/grassified/WristPrompt/issues?q=is%3Aissue%20is%3Aopen).
@@ -21,7 +33,7 @@ its exact title before creating another issue.
 | D7-D: support text plus multiple image attachments in Responses inference | `d7/d-image-input` | D7-C, D6-B |
 | D7-E: integrate prompt presets with multi-image composer UX | `d7/e-composer-integration` | D7-B, D7-D |
 | D7-F: optional image generation and zoomable image viewer | `d7/f-image-generation` | D6-D, D7-E |
-| D7-G: final integration, physical acceptance and Monday alpha readiness | `d7/g-alpha-readiness` | D6-D, D7-E, D7-H |
+| D7-G: final integration, physical acceptance and Monday alpha readiness | `d7/12-alpha-readiness` | D6-D, D7-E, D7-H |
 | [D7-H: provider-native thinking/reasoning controls](https://github.com/grassified/WristPrompt/issues/18) | `codex/d7-h-thinking-controls` | Merged D6-B, D6-C; independent of photo library/presets |
 
 D7-A and D7-C can begin after D6-A establishes persistence/attachment boundaries.
