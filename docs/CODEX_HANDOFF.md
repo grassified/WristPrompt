@@ -24,7 +24,9 @@ contracts, limits and evidence. #9 remains open for live-route/physical acceptan
 deferred to #12. D7-E combined composer is implemented; see [D7_E_COMPOSER.md](D7_E_COMPOSER.md)
 for draft lifecycle policy and evidence. #10 stays open for physical acceptance
 deferred to #12. D7-G integrated acceptance is in progress; see [D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md).
-D7-F (#11) is deferred OPTIONAL STRETCH for Monday; #1 remains non-blocking debt.
+D7-F image generation and bounded Wear viewer are merged via PR #30; automated/emulator
+acceptance is complete. #11 remains open for owner live API-key generation and
+Galaxy Watch viewer acceptance in #12. #1 remains non-blocking debt.
 Final owner Galaxy Watch 7 retest: R1–R5/R7–R10 PASS; R6 structured Markdown
 Wear table rendering FAIL / non-blocking known debt. TalkBack remains untested.
 

@@ -7,8 +7,8 @@ No release/upload/publication authorization is implied.
 
 ## Verified repository baseline
 
-Clean working tree verified before fetch; latest main fast-forward check confirmed
-`b03fda3e20cfeb4aef1bfe4dc5c0d7257bc87169`. GitHub confirms these merged PRs;
+The final acceptance branch was refreshed after PR #30. Current integrated main is
+`7734a58864bcbfc6d2397c35b94eb3cfd73f9533`. GitHub confirms these merged PRs;
 their merge commits are present in main's first-parent history:
 
 | Work | PR | Merge SHA | Issue disposition |
@@ -20,9 +20,11 @@ their merge commits are present in main's first-parent history:
 | Photo library | #26 | 62592c772c513365d5a28751acbc9d78f0dee10a | #8 OPEN: real Picker/paired transfer |
 | Multi-image inference | #27 | 745620305389fa0d98c702c3f8f083f0e6796042 | #9 OPEN: live-route/physical acceptance |
 | Integrated composer | #28 | b03fda3e20cfeb4aef1bfe4dc5c0d7257bc87169 | #10 OPEN: physical composer acceptance |
+| Image generation + Wear viewer | #30 | 7734a58864bcbfc6d2397c35b94eb3cfd73f9533 | #11 OPEN: live API-key generation + Galaxy Watch viewer acceptance |
 
-Implementation merges do not establish physical acceptance. #11 remains OPEN,
-explicitly DEFERRED OPTIONAL STRETCH for Monday; do not implement it in this gate.
+Implementation merges do not establish physical acceptance. #11 implementation plus
+automated/emulator acceptance is merged via PR #30; owner live API-key generation
+and Galaxy Watch viewer acceptance remains pending in this gate.
 #1 remains OPEN, non-blocking D5 table debt unless a new core regression emerges.
 #12 remains OPEN pending this gate. No issue has been closed by this task.
 
@@ -142,8 +144,11 @@ corrupt databases or run androidTest fault injection on physical devices.
 | F2 / #9 | Reopen completed image chat and explicitly continue. Delete its disposable source library image via UI; conversation-owned replay still continues. Stop image request if feasible; stopped/failed attempt excluded and no automatic retry. | NOT TESTED |
 | G1 / #10 | Preset Insert/Replace/Cancel → edit via real IME → add ordinary text → attach multiple → inspect thumbnails → remove one → edit again → explicit Send. Zero requests before Send, one Send, completed result; Stop reachable while streaming. | NOT TESTED |
 | G2 / #10 | Ordinary navigation/Activity recreation retains review. Separately safe process restart discards unsent review and restores canonical completed chat idle. Intentional process-death draft discard is expected. | NOT TESTED |
-| H | Repeat representative history/model/Thinking/preset/photo/composer/Send/Stop screens at normal and maximum practical font; round clipping, touch targets, rotary, keyboard editing and thumbnail interactions. Prioritize IME and visible multiple images (PR #28 gaps). Record each screen/input result. TalkBack separately if actually tested. | NOT TESTED |
-| I | Completed Markdown, code block horizontal touch, vertical scrolling, explicit Latest and reader-position preservation. Table imperfection remains #1 debt unless a core regression; TalkBack not inferred. | NOT TESTED |
+| H1 / #11 | SIWC/ChatGPT-plan generation remains clearly unsupported with zero fallback. On a reviewed supported OpenAI API-key route/model, explicit Generate sends exactly one request; changing model/Thinking/navigation alone sends none. Generated image appears in conversation. | NOT TESTED |
+| H2 / #11 | Reopen generated-image chat and restart/reopen app; image remains available. Open viewer and verify physical pinch zoom, pan, clamping/inward recovery, Close, system Back and predictable reopen. If practical, Stop one disposable generation before completion and verify no false completed image or automatic retry. | NOT TESTED |
+| I | Repeat representative history/model/Thinking/preset/photo/composer/generation/Send/Stop screens at normal and maximum practical font; round clipping, touch targets, rotary, keyboard editing and thumbnail/viewer interactions. Prioritize IME and visible multiple images. TalkBack separately if actually tested. | NOT TESTED |
+| J1 | Completed Markdown, headings/lists/emphasis, code block horizontal touch, vertical scrolling, explicit Latest and reader-position preservation. | NOT TESTED |
+| J2 / #1 | Physically reproduce one representative Markdown table. Record whether Wear-friendly stacked records are absent, whether fallback remains readable, normal/max-font clipping and rotary. #1 remains non-blocking unless ordinary chat becomes unusable. | NOT TESTED |
 
 Thinking examples are native strings only where supported (none/minimal/low/medium/
 high/xhigh/max/future supported values); never expect all values on every model.
@@ -173,12 +178,14 @@ debug signing is for development, not production signing or publication readines
 
 ## BLOCKED / DEFERRED / KNOWN DEBT
 
-- Owner device installation and physical A–I: BLOCKED pending connected devices
+- Owner device installation and physical A–J: BLOCKED pending connected devices
   and owner observations. All underlying unperformed checks remain NOT TESTED.
-- Live image and explicit supported Thinking completion: NOT TESTED; no owner
+- Live image-input, image-generation and explicit supported Thinking completion:
+  NOT TESTED; no owner
   credentials used by automation. Preserve each route's separate result.
 - Paired-emulator capability discovery limitation remains; no gating bypass.
-- #11: DEFERRED OPTIONAL STRETCH, open. #1: non-blocking known debt, open.
+- #11: implementation/automated/emulator acceptance merged via PR #30;
+  owner physical/live acceptance NOT TESTED. #1: non-blocking known debt, open.
 - TalkBack: NOT TESTED. No claim about physical battery/thermal behavior.
 
 ## Defect and closure policy
@@ -191,6 +198,6 @@ checks. Do not repeatedly rerun the full gate. If a difficult defect remains
 uncertain after one focused attempt, report ESCALATE THIS DEFECT TO GPT-6.1 SOL MEDIUM
 with owner/files, evidence, attempt and reason.
 
-Close #5/#7/#8/#9/#10/#18 only after their remaining physical acceptance passes;
+Close #5/#7/#8/#9/#10/#11/#18 only after their remaining physical/live acceptance passes;
 BLOCKED/NOT TESTED never qualifies. Close #12 and merge its focused PR only after
 sufficient core acceptance and explicit non-blocking disposition of remaining debt.

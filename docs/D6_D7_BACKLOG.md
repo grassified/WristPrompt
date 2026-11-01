@@ -1,10 +1,11 @@
 # D6/D7 implementation backlog
 
 D5 is PASS WITH KNOWN DEBT — COMPLETE. D6-A–C are merged through #16/#17;
-D6-D implementation/nonphysical acceptance is merged via #21. D7-A–E and D7-H
-are merged via #22/#23/#25/#26/#27/#28. #5/#7/#8/#9/#10/#18 remain open for
-consolidated physical acceptance in [D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md).
-#6 is closed. #11 is deferred OPTIONAL STRETCH for Monday; #1 is non-blocking debt.
+D6-D implementation/nonphysical acceptance is merged via #21. D7-A–F and D7-H
+are merged via #22/#23/#25/#26/#27/#28/#30. #5/#7/#8/#9/#10/#11/#18 remain
+open for consolidated physical/live acceptance in
+[D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md).
+#6 is closed. #1 is non-blocking debt.
 This document is planning,
 not permission to implement subsequent phases.
 

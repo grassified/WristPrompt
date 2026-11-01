@@ -377,7 +377,9 @@ durable attachment replay are implemented; see [docs/D7_D_IMAGE_INPUT.md](docs/D
 [docs/D7_E_COMPOSER.md](docs/D7_E_COMPOSER.md). #10 remains open for physical
 acceptance deferred to #12. D7-G integrated acceptance is in progress in [docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md).
 D7-H implementation is merged via PR #25; #18 stays open for physical/live evidence.
-D7-F (#11) is explicitly deferred OPTIONAL STRETCH for Monday.
+D7-F image generation and bounded Wear viewer are merged via PR #30; automated/emulator
+acceptance is complete. #11 remains open for owner live API-key generation and
+Galaxy Watch viewer acceptance in the consolidated #12 physical pass.
 
 - [ ] D7-A: durable named custom USER prompt presets managed on phone (list,
   create/edit/rename/delete, multiline editor); no hidden always-on system prompt.
