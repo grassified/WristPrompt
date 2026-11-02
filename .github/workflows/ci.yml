@@ -17,8 +17,6 @@ jobs:
     name: Android and repository checks
     runs-on: ubuntu-24.04
     timeout-minutes: 30
-    env:
-      ANDROID_USER_HOME: ${{ runner.temp }}/wristprompt-android
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -32,6 +30,8 @@ jobs:
         with:
           cache-provider: basic
           cache-read-only: ${{ github.event_name == 'pull_request' }}
+      - name: Isolate CI debug signing
+        run: echo "ANDROID_USER_HOME=$RUNNER_TEMP/wristprompt-android" >> "$GITHUB_ENV"
       - name: Install repository Android SDK requirements
         run: sdkmanager 'platforms;android-37.0' 'build-tools;36.0.0' 'platform-tools'
       - name: Unit tests, lint and both app variants
