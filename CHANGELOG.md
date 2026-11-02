@@ -1,6 +1,6 @@
 # Changelog
 
-## [0.1.1] - 2026-11-02 (prerelease)
+## [0.1.1] - 2026-11-03 (prerelease)
 
 - Labelled stacked Markdown table records with local exact fallback; surrounding
   Markdown and source content remain intact.

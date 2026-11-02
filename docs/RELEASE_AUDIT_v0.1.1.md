@@ -1,4 +1,4 @@
-# v0.1.1 release audit — 2026-11-02
+# v0.1.1 release audit — 2026-11-03
 
 Publication gate: READY
 
@@ -45,6 +45,29 @@ only, with ownership rechecks and display-scope resets; no library substitution.
 Replay, Stop, explicit Send, selected billing/auth path and generated viewer are
 unchanged. Two test teardowns join cancellation before releasing test resources.
 
+## Test-infrastructure hotfix — 2026-11-03
+
+Main `dff06f222833af1f701df61965938b6e2af74049` failed hosted run
+[41510259961](https://github.com/grassified/WristPrompt/actions/runs/41510259961);
+publication correctly stopped before any v0.1.1 tag/release. The named model-
+fallback test reported an exception from earlier asynchronous cleanup, not a
+failed model-fallback assertion. A preset picker collecting `catalogs.flowOn(IO)`
+was cancelled without joining; the class immediately reset Main, allowing the
+producer's completion to resume onto an absent dispatcher. The class also kept
+only the last inference ViewModel when tests created several owners.
+
+The focused hotfix changes only `ChatViewModelTest` lifecycle handling: retain
+all inference/auxiliary ViewModels, cancel every root job and join all of them
+before resetting Main; local replacement/picker cleanup also cancels and joins.
+No production behavior, assertion, dispatcher exception reporting or retry policy
+is changed. A gated real preset-flow regression holds IO cancellation cleanup
+open and proves teardown waits for all three owners. With cancel-only cleanup it
+failed deterministically; joined cleanup passes. The affected 18-test class passed
+100 consecutive runs in one JVM (1,800 executions); no sleeps/retries are used to
+fix the race. The complete local gate below is rerun on the final hotfix. Hosted
+hotfix PR CI and a NEW actual main CI must both be green before tag/publication;
+old green PR runs cannot override a failed main run.
+
 ## Automated release gate
 
 VERIFIED AUTOMATICALLY: the complete clean gate was rerun for publication with
@@ -59,8 +82,9 @@ python3 tools/check_markdown_links.py
 git diff --check
 ```
 
-- Clean Gradle BUILD SUCCESSFUL in 2m 48s; 198 tasks (196 executed, two up-to-date).
-- Wear **622 tests / 72 suites**; mobile **98 / 17**; zero failures/errors/skips.
+- The full clean gate passes; exact elapsed/task results are recorded in the
+  hotfix PR and final report. The earlier pre-hotfix gate took 2m 48s.
+- Wear **623 tests / 72 suites**; mobile **98 / 17**; zero failures/errors/skips.
 - Both debug/release assemblies and debug lints PASS. Wear zero errors / 14 warnings;
   mobile zero errors / four warnings. Existing dependency/version/manifest/vector/
   KTX/recents findings plus the debug-only fixture recents warning remain; no

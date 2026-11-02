@@ -1,9 +1,14 @@
 package io.github.grassified.wristprompt.openai
 
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.grassified.wristprompt.auth.CredentialMode
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.*
 import kotlinx.serialization.json.*
@@ -14,7 +19,7 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModelTest {
-    private var vm: InferenceViewModel? = null
+    private val viewModels = mutableListOf<ViewModel>()
     private val access = MutableStateFlow(InferenceAccessState(client = "client", usable = true))
     private class Provider : AiProvider {
         val inputs = mutableListOf<List<JsonObject>>()
@@ -30,16 +35,67 @@ class ChatViewModelTest {
         }
     }
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
-    @After fun cleanup() { vm?.viewModelScope?.cancel(); Dispatchers.resetMain() }
+    @After fun cleanup() {
+        runBlocking { cancelViewModels() }
+        Dispatchers.resetMain()
+    }
+    private fun <T : ViewModel> track(model: T): T = model.also { viewModels += it }
+    private suspend fun cancelViewModels() {
+        val jobs = viewModels.map { it.viewModelScope.coroutineContext[Job]!! }
+        jobs.forEach { it.cancel() }
+        // IO flow producers may resume Main while unwinding cancellation.
+        jobs.joinAll()
+        viewModels.clear()
+    }
     private fun create(provider: Provider = Provider()): InferenceViewModel {
         var saved = "terra"
         val session = InferenceSession({ lease() }, provider) { lease -> lease.clientId == access.value.client &&
             lease.generation == access.value.generation && lease.mode == access.value.mode && lease.modeRevision == access.value.modeRevision }
-        return InferenceViewModel(access, session, { saved }, { _, slug -> saved = slug }).also { vm = it }
+        return track(InferenceViewModel(access, session, { saved }, { _, slug -> saved = slug }))
     }
     private fun lease() = CredentialLease(access.value.client!!, access.value.generation, "synthetic", Long.MAX_VALUE,
         access.value.mode, access.value.modeRevision)
     private fun send(model: InferenceViewModel, prompt: String = "User question") { model.draft(prompt); model.send() }
+    @Test fun cleanupJoinsEveryViewModelAndPresetIoBeforeMainReset(): Unit = runTest {
+        val started = CompletableDeferred<Unit>()
+        val cancelling = CompletableDeferred<Unit>()
+        val releaseCleanup = CompletableDeferred<Unit>()
+        val memory = object : DataStore<Preferences> {
+            override val data = flow {
+                try {
+                    emit(emptyPreferences())
+                    started.complete(Unit)
+                    awaitCancellation()
+                } finally {
+                    withContext(NonCancellable) {
+                        cancelling.complete(Unit)
+                        releaseCleanup.await()
+                    }
+                }
+            }
+            override suspend fun updateData(transform: suspend (Preferences) -> Preferences) = error("Read-only synthetic fixture")
+        }
+        // Multiple inference owners and the auxiliary picker must all be retained.
+        create(); create()
+        track(io.github.grassified.wristprompt.presets.WatchPresetsViewModel(
+            io.github.grassified.wristprompt.presets.SyncedPresetStore(memory)) { true })
+        started.await()
+        val jobs = viewModels.map { it.viewModelScope.coroutineContext[Job]!! }
+        assertEquals(3, jobs.size)
+        val cleanup = async(start = CoroutineStart.UNDISPATCHED) { cancelViewModels() }
+        try {
+            cancelling.await()
+            assertFalse("Cleanup must wait for the IO producer's finalization", cleanup.isCompleted)
+            assertTrue(jobs.any { !it.isCompleted })
+            releaseCleanup.complete(Unit)
+            cleanup.await()
+            assertTrue("Every owner must finish before Main can be reset", jobs.all { it.isCompleted })
+        } finally {
+            releaseCleanup.complete(Unit)
+            cleanup.await()
+            jobs.joinAll()
+        }
+    }
     @Test fun photoPickerCancelAndApplyPreserveTextAndNeverSend(): Unit = runTest {
         val directory = java.nio.file.Files.createTempDirectory("synthetic-images").toFile()
         val provider = Provider(); val model = create(provider); runCurrent()
@@ -47,7 +103,7 @@ class ChatViewModelTest {
         val catalog = store.importBatch(2) {
             io.github.grassified.wristprompt.images.ImageContent(byteArrayOf(it.toByte()), byteArrayOf(it.toByte()), 1, 1)
         }
-        val picker = io.github.grassified.wristprompt.images.WatchImagesViewModel(store) { false }
+        val picker = track(io.github.grassified.wristprompt.images.WatchImagesViewModel(store) { false })
         try {
             model.draft("Exact text draft")
             assertTrue(picker.begin(model))
@@ -128,7 +184,7 @@ class ChatViewModelTest {
             store.accept("phone", setOf("phone"), listOf(io.github.grassified.wristprompt.presets.PresetDelivery(wire.path(record), wire.encode(
                 io.github.grassified.wristprompt.presets.PresetPacket(source = source, catalog = io.github.grassified.wristprompt.presets.PresetCatalog(records = listOf(record)))))))
         }
-        val picker = io.github.grassified.wristprompt.presets.WatchPresetsViewModel(store) { true }
+        val picker = track(io.github.grassified.wristprompt.presets.WatchPresetsViewModel(store) { true })
         suspend fun awaitCondition(condition: () -> Boolean) {
             withContext(Dispatchers.Default) { withTimeout(5000) { while (!condition()) delay(5) } }
             runCurrent()
@@ -153,7 +209,7 @@ class ChatViewModelTest {
             assertNotNull(picker.state.value.error)
             assertTrue(provider.inputs.isEmpty())
             assertFalse(picker.state.value.toString().contains("Synthetic"))
-        } finally { picker.viewModelScope.cancel() }
+        } finally { picker.viewModelScope.coroutineContext[Job]!!.cancelAndJoin() }
     }
     @Test fun twoTurnsUseChatPayloadAndAppendExactlyOnceWithoutProofMatch(): Unit = runTest {
         val provider = Provider(); val model = create(provider); runCurrent()
@@ -194,7 +250,7 @@ class ChatViewModelTest {
             assertEquals(if (stop) ChatStage.CANCELLED else ChatStage.FAILED, model.chat.value.stage)
             p.answer = { it(ResponseEvent.Completed("Done")) }
             send(model, "Next"); runCurrent(); assertEquals(1, p.inputs.last().size)
-            model.viewModelScope.cancel()
+            model.viewModelScope.coroutineContext[Job]!!.cancelAndJoin()
         }
     }
     @Test fun newChatInvalidatesLateResultAndInputResult(): Unit = runTest {
@@ -239,7 +295,7 @@ class ChatViewModelTest {
                 else access.value.copy(client = "other-client", generation = access.value.generation + 1)
             runCurrent(); gate.complete(Unit); runCurrent()
             assertEquals(ChatState(), model.chat.value)
-            model.viewModelScope.cancel()
+            model.viewModelScope.coroutineContext[Job]!!.cancelAndJoin()
         }
     }
     @Test fun modelFallbackAfterFailedReloadCannotCarryOldContext(): Unit = runTest {
@@ -260,7 +316,7 @@ class ChatViewModelTest {
         assertEquals(ApiProblem.INVALID_API_KEY, model.chat.value.problem)
     }
     @Test fun reconstructedViewModelHasNoConversationHistory(): Unit = runTest {
-        val p = Provider(); val old = create(p); runCurrent(); send(old); runCurrent(); old.viewModelScope.cancel()
+        val p = Provider(); val old = create(p); runCurrent(); send(old); runCurrent(); old.viewModelScope.coroutineContext[Job]!!.cancelAndJoin()
         val restored = create(p); runCurrent(); assertEquals(ChatState(), restored.chat.value)
         send(restored, "New process"); runCurrent(); assertEquals(1, p.inputs.last().size)
     }
