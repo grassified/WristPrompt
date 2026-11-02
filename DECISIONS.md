@@ -1415,3 +1415,41 @@ Google linking exception are unchanged. See [docs/D7_C_PHOTO_LIBRARY.md](docs/D7
 for limits, cleanup, evidence, pairing limitations and physical acceptance deferred
 to #12. Selected UUIDs are retained draft state only; #9 inference serialization
 and #10 process-death combined draft persistence remain outside this change.
+
+
+## 2026-11-02 — v0.1.1 candidate and distribution boundary
+
+#1 (PR #34) labels all table cells, separates record starts and confines exact
+fallback to a rejected table; the original physical payload was not captured.
+#32 (PR #35) projects ordered completed-user thumbnails and validates only their
+conversation-owned files, with post-IO ownership checks and display-scope reset.
+Both have unit/native emulator evidence; physical acceptance is pending. Existing
+replay, Stop, credentials, explicit Send/billing and generated viewer are unchanged.
+Two cancellation-test teardowns now join work before releasing test dispatchers.
+
+CI PR #36 passed hosted run 41498858852 before merge. Validation uses a temporary
+matched debug identity, read-only PR caches and unsigned releases. Official action
+revisions are commit-pinned; optional external Gradle service injection is disabled.
+
+Candidate version is 0.1.1 / code 2 in both modules. Shared release signing is
+optional only for ordinary unsigned validation; requested/partial production
+configuration fails closed. Both modules consume one environment identity. A
+separate tag/manual workflow reruns the gate, signs without caches, checks an
+approved public certificate and publishes only a verified matched pair/checksums
+through a draft. Upstream notices are embedded with exact-tag source references.
+On 2026-11-02 the owner confirmed permanent production-key creation, local
+password-manager recovery and independent secure backup, and configured all four
+protected-environment secrets plus the approved public certificate variable.
+The local keystore hash and GitHub secret names/public variable/protections were
+verified without reading passwords. Actual production APK signatures must match
+that public certificate in the workflow before publication.
+The owner explicitly made #1/#32 physical acceptance DEFERRED / NON-BLOCKING for
+v0.1.1 and authorized merge, annotated tag and production-signed prerelease after
+all non-physical gates pass. Both issues stay OPEN / physically unverified; #11
+stays OPEN. This does not waive signing, security or automated checks, alter prior
+physical evidence, authorize debug/unsigned assets or change v0.1.0. See
+[signing](docs/RELEASE_SIGNING.md) and [candidate acceptance](docs/V0_1_1_ACCEPTANCE.md).
+
+[The v0.2.0 roadmap](docs/ROADMAP_v0.2.0.md) recommends a provider/credential/replay
+isolation audit before OpenRouter, then native Anthropic/Gemini. It is planning
+only; no provider implementation, dependency update or license scope change.

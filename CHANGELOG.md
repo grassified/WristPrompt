@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.1.1] - 2026-11-02 (prerelease)
+
+- Labelled stacked Markdown table records with local exact fallback; surrounding
+  Markdown and source content remain intact.
+- Ordered sent-photo thumbnails in completed conversations, including restore;
+  unavailable conversation copies show a safe placeholder.
+- GitHub Actions validates both apps, tooling, scenario isolation and local links.
+- Production signing identity, matched-APK verification, embedded license notices
+  and a controlled prerelease workflow. Only approved production-signed APKs and
+  checksums may be published; GitHub records the actual publication result.
+- #1/#32 are verified automatically/on emulator, not yet physically on the owner
+  Galaxy Watch 7. Owner physical acceptance is explicitly deferred/non-blocking;
+  both issues remain open. #11 remains optional and open.
+- Added a provider-isolation-first v0.2.0 roadmap; no new providers implemented.
+
+
 ## [0.1.0] - 2026-11-02
 
 First early-access source/developer release. Core acceptance: **READY WITH

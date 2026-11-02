@@ -12,7 +12,7 @@ and AGENTS.md. The dated audit and Git inventory are in docs/history/DAY2_BASELI
 - SDK platform `platforms;android-37.0`, Build Tools `build-tools;36.0.0`.
   Install `platform-tools` for ADB. Accept SDK licenses interactively.
 - Both apps compileSdk 37 / targetSdk 36; minSdk Wear 30, mobile 26.
-- Both apps: `io.github.grassified.wristprompt`, version 0.1.0 / code 1.
+- Both apps: `io.github.grassified.wristprompt`, candidate version 0.1.1 / code 2.
 
 Use the wrapper; no global Gradle/Kotlin installation is needed. Keep dependency
 pins unchanged unless separately reviewed. See DECISIONS.md for SDK rationale.
@@ -127,3 +127,11 @@ Official references checked 2026-10-28:
 [app signing](https://developer.android.com/studio/publish/app-signing),
 [Data Layer identity requirements](https://developer.android.com/training/wearables/data/overview),
 [command-line tools](https://developer.android.com/studio#command-tools).
+
+## Production distribution
+
+Ordinary release assembly remains unsigned. Both modules share the explicit
+[production signing contract](docs/RELEASE_SIGNING.md); partial or required-but-missing
+configuration fails. The owner confirmed permanent key creation/secure backup;
+focused #1/#32 physical checks are deferred and non-blocking for v0.1.1. APKs include a generated `assets/legal/` notice inventory; no
+dependency versions or existing development keys changed.

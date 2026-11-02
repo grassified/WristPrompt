@@ -36,8 +36,9 @@ The owner's section 7 permission follows the conventional approach described in
 [GNU's incompatible-library guidance](https://www.gnu.org/licenses/gpl-faq.en.html#GPLIncompatibleLibs).
 It does not waive Corresponding Source for WristPrompt/modifications, installation
 information when required, or any other applicable GPLv3 obligation for WristPrompt.
-It gives no redistribution permission on Google's behalf. This publication contains
-project source only, not Google AARs or application binaries.
+It gives no redistribution permission on Google's behalf. The published v0.1.0 release contains source only. Candidate v0.1.1 builds
+include a distribution notice bundle; publication remains gated by signing and
+owner acceptance.
 
 The permissive dependencies below have no identified incompatibility with GPLv3.
 Apache-2.0, BSD-2-Clause, BSD-3-Clause and MIT are generally compatible with GPLv3;
@@ -125,3 +126,17 @@ were reviewed. Preserve its Apache license/notices; it does not require extendin
 the Google Play services linking exception. This is a metadata reader for bounded
 image import, replacing the old platform parser flagged by Android lint for known
 security bugs; it is not a general image-loading framework. Existing pins remain unchanged.
+
+
+## v0.1.1 distribution bundle
+
+Both apps generate `assets/legal/` from their resolved production archives using
+[the shared build script](gradle/distribution-notices.gradle.kts). It preserves
+embedded LICENSE/NOTICE/COPYING and Google third-party-license files, including
+nested JAR entries, without changing dependency code or versions. An inventory
+records public coordinates, archive paths and artifact SHA-256 hashes, alongside
+the project license/exception, this review, canonical Apache-2.0 text and exact-tag
+source/build links. Bounded readers fail rather than silently truncate notices.
+The release verifier requires the bundle. This supplements the existing artifact
+review; it does not broaden the proprietary linking exception or claim third-party
+ownership. Historical source-only audits remain unchanged.
