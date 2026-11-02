@@ -71,7 +71,12 @@ class ImageGenerationPipelineTest {
         fun event() = ResponseEvent.Completed("", listOf(buildJsonObject { put("type", "image_generation_call"); put("id", "ig_synthetic") }), GeneratedOutput(byteArrayOf(1,2,3)))
     }
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
-    @After fun cleanup() { vms.forEach { it.viewModelScope.cancel() }; Dispatchers.resetMain() }
+    @After fun cleanup() = runBlocking {
+        // Native preparation can still return from IO after cancellation. Join before
+        // replacing the global Main dispatcher so it cannot contaminate later tests.
+        vms.forEach { it.viewModelScope.coroutineContext[Job]!!.cancelAndJoin() }
+        Dispatchers.resetMain()
+    }
     private fun files(root: File = folder.newFolder(), prepare: suspend (GeneratedOutput) -> ImageContent = { content }) =
         // Windows cannot open directory FileChannels. Native fsync/promotion is covered on Android.
         GeneratedImages(root, prepare, { _, image -> image }, syncDirectory = {})

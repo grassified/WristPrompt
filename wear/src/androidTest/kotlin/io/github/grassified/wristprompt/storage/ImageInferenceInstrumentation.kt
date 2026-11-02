@@ -4,9 +4,15 @@ import android.app.Activity
 import android.app.Instrumentation
 import android.content.Context
 import android.content.ContextWrapper
+import android.content.Intent
+import android.os.SystemClock
+import android.view.accessibility.AccessibilityNodeInfo
 import android.database.DatabaseErrorHandler
 import android.database.sqlite.SQLiteDatabase
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Rect
 import android.os.Bundle
 import androidx.lifecycle.viewModelScope
 import io.github.grassified.wristprompt.images.*
@@ -58,6 +64,42 @@ class ImageInferenceInstrumentation : Instrumentation() {
             onEvent(ResponseEvent.Completed("synthetic answer"))
         }
     }
+    /** Traverse the actual Compose transcript, requiring decoded image semantics, not just metadata. */
+    private suspend fun showTranscript(vm: InferenceViewModel, count: Int, unavailable: Boolean = false) {
+        withContext(Dispatchers.Main) { DebugTranscriptActivity.fixture = vm }
+        val activity = startActivitySync(Intent(targetContext, DebugTranscriptActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        try {
+            val found = mutableSetOf<String>()
+            val wanted = if (unavailable) setOf("Photo unavailable") else (1..count).map { "Sent photo $it" }.toSet()
+            fun collect(node: AccessibilityNodeInfo?) {
+                if (node == null) return
+                val bounds = Rect().also(node::getBoundsInScreen)
+                if (node.isVisibleToUser && bounds.intersect(0, 35, targetContext.resources.displayMetrics.widthPixels,
+                        targetContext.resources.displayMetrics.heightPixels - 140)) {
+                    node.text?.toString()?.let(found::add); node.contentDescription?.toString()?.let(found::add)
+                }
+                for (index in 0 until node.childCount) collect(node.getChild(index))
+            }
+            repeat(40) {
+                SystemClock.sleep(400)
+                collect(uiAutomation.rootInActiveWindow)
+                if (found.containsAll(wanted)) {
+                    val bitmap = uiAutomation.takeScreenshot()
+                    val file = File(isolated.filesDir, "v011-transcript-$checkpoint-${if (unavailable) "unavailable" else count}.png")
+                    file.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) }; bitmap.recycle()
+                    return
+                }
+                uiAutomation.executeShellCommand(if (it % 2 == 0) "input swipe 220 270 220 200 450"
+                    else "input rotaryencoder scroll --axis SCROLL,-0.5").let {
+                    android.os.ParcelFileDescriptor.AutoCloseInputStream(it).use { input -> input.readBytes() }
+                }
+            }
+            error("Transcript image semantics missing")
+        } finally {
+            withContext(Dispatchers.Main) { activity.finish() }
+            waitForIdleSync()
+        }
+    }
     private suspend fun verify() {
         val ctx = isolated
         val directory = File(ctx.noBackupFilesDir, "d7d-image-inference-fixture")
@@ -95,6 +137,11 @@ class ImageInferenceInstrumentation : Instrumentation() {
                 check(vm.chat.value.draft.isEmpty() && vm.imageSelection.selected.value.isEmpty())
                 val saved = store.list(owner).single()
                 open(saved.id); check(provider.count == 0)
+                val restored = vm.chat.value.messages.first()
+                restored.attachments.forEach { check(vm.sentThumbnail(restored, it).isNotEmpty()) }
+                phase = "restart-decoded-transcript"
+                showTranscript(vm, 2)
+                check(provider.count == 0)
                 check(library.load().records.all { it.deleted })
                 main { vm.draft("explicit after restart"); vm.send() }; done()
                 check(provider.count == 1 && provider.inputs.single().size == 3)
@@ -103,6 +150,7 @@ class ImageInferenceInstrumentation : Instrumentation() {
             }
             phase = "native-fixtures"
             val bitmap = Bitmap.createBitmap(16, 12, Bitmap.Config.ARGB_8888)
+            Canvas(bitmap).drawColor(Color.rgb(30, 140, 160))
             val bytes = ByteArrayOutputStream().also { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }.toByteArray()
             bitmap.recycle()
             val ids = library.importBatch(3) { AndroidImages.normalize(bytes) }.records.map { it.id }
@@ -110,6 +158,8 @@ class ImageInferenceInstrumentation : Instrumentation() {
             select(ids.take(1)); check(provider.count == 0)
             main { vm.draft("one image"); vm.send(); vm.send() }; done(); check(provider.count == 1)
             check(provider.inputs.last().single()["content"]!!.jsonArray.size == 2)
+            phase = "one-decoded-transcript"
+            showTranscript(vm, 1); check(provider.count == 1)
             main { vm.newChat() }
             phase = "unsupported-route"
             main { vm.select("unknown-model") }
@@ -160,6 +210,17 @@ class ImageInferenceInstrumentation : Instrumentation() {
             ids.forEach { library.delete(it) }
             open(latest.id); check(provider.count == 3)
             check(vm.chat.value.messages.first().attachments == ids.take(2))
+            phase = "multi-decoded-transcript-after-library-delete"
+            showTranscript(vm, 2); check(provider.count == 3)
+            val user = vm.chat.value.messages.first()
+            val thumb = File(directory, "replay/${latest.id}/${ids.first()}-1-thumb.jpg")
+            val intact = thumb.readBytes()
+            phase = "missing-transcript-placeholder"
+            thumb.delete(); showTranscript(vm, 2, unavailable = true)
+            phase = "corrupt-transcript-placeholder"
+            thumb.writeBytes(ByteArray(intact.size)); showTranscript(vm, 2, unavailable = true)
+            thumb.writeBytes(intact)
+            check(vm.sentThumbnail(user, ids.first()).contentEquals(intact)); check(provider.count == 3)
             main { vm.draft("unsaved process-boundary draft") }
             select(ids.take(2))
         } finally {

@@ -55,6 +55,18 @@ class ConversationImages(
             } catch (_: Exception) { throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE, requestNotSent = true) }
         }
     }
+    /** Read only the conversation's committed private copy; never consult the library. */
+    suspend fun thumbnail(chat: String, id: String): ByteArray = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            try {
+                require(ImageLimits.validId(chat) && ImageLimits.validId(id))
+                require(File(root, "$chat/catalog.json").isFile)
+                val content = store(chat).content(id)
+                validate(content.record(id), content).thumbnail
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (_: Exception) { throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE) }
+        }
+    }
     /** Caller first durably tombstones the chat; no recursive deletion or library mutation. */
     suspend fun delete(chat: String) = withContext(Dispatchers.IO) {
         mutex.withLock {

@@ -210,6 +210,81 @@ class ImageChatIntegrationTest {
             assertEquals(count + 1, provider.inputs.last().first().getValue("content").jsonArray.size)
         }
     }
+    @Test fun sentThumbnailsRestoreInOrderAfterSourceDeletionWithoutGenerating() = runBlocking {
+        val store = Store(); val provider = Provider(); val selected = ids(3)
+        val vm = create(store, provider); select(vm, selected); send(vm); completed(vm)
+        val first = vm.chat.value.messages.first()
+        val expected = selected.map { library.content(it).thumbnail }
+        selected.forEach { library.delete(it) }
+        selected.forEachIndexed { index, id -> assertArrayEquals(expected[index], vm.sentThumbnail(first, id)) }
+        vm.viewModelScope.coroutineContext[Job]!!.cancelAndJoin()
+        val fresh = create(store, provider)
+        val opened = CompletableDeferred<Unit>()
+        withContext(main) { fresh.openChat(store.entries.keys.single()) { opened.complete(Unit) } }
+        withTimeout(5000) { opened.await() }
+        val restored = fresh.chat.value.messages.first()
+        selected.forEachIndexed { index, id -> assertArrayEquals(expected[index], fresh.sentThumbnail(restored, id)) }
+        assertEquals(1, provider.inputs.size)
+    }
+
+    @Test fun damagedConversationCopiesNeverFallBackToHealthyLibrary() = runBlocking {
+        for (damage in listOf("missing", "corrupt", "manifest", "image")) {
+            val store = Store(); val provider = Provider(); val selected = ids(1)
+            val vm = create(store, provider); select(vm, selected); send(vm); completed(vm)
+            val message = vm.chat.value.messages.first(); val id = selected.single()
+            val base = directory.resolve("replay/${store.entries.keys.single()}")
+            when (damage) {
+                "missing" -> base.resolve("$id-1-thumb.jpg").delete()
+                "corrupt" -> base.resolve("$id-1-thumb.jpg").writeBytes(byteArrayOf(9))
+                "manifest" -> base.resolve("catalog.json").delete()
+                else -> base.resolve("$id-1-image.jpg").delete()
+            }
+            assertNotNull(library.content(id))
+            try { vm.sentThumbnail(message, id); fail("Damaged conversation must be unavailable") }
+            catch (failure: ApiFailure) { assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem); assertNull(failure.cause) }
+            assertEquals(1, provider.inputs.size)
+        }
+    }
+
+    @Test fun thumbnailReadRejectsForeignStaleAndUncommittedReferences() = runBlocking {
+        val store = Store(); val provider = Provider(); val selected = ids(1)
+        val vm = create(store, provider); select(vm, selected); send(vm); completed(vm)
+        val message = vm.chat.value.messages.first(); val id = selected.single()
+        for (reference in listOf(message.copy(id = message.id + 100), message.copy(status = ChatMessageStatus.EXCLUDED),
+            message.copy(status = ChatMessageStatus.PENDING))) {
+            try { vm.sentThumbnail(reference, id); fail("Foreign reference must fail") }
+            catch (failure: ApiFailure) { assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem) }
+        }
+        try { vm.sentThumbnail(message, ImageLimits.newId()); fail("Unowned image must fail") }
+        catch (failure: ApiFailure) { assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem) }
+        withContext(main) { vm.newChat() }
+        try { vm.sentThumbnail(message, id); fail("Old chat must fail") }
+        catch (failure: ApiFailure) { assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem) }
+        assertEquals(1, provider.inputs.size)
+    }
+
+    @Test fun lateThumbnailReadCannotCrossChatReplacement() = runBlocking {
+        val started = java.util.concurrent.CountDownLatch(1)
+        val release = java.util.concurrent.CountDownLatch(1)
+        var hold = false
+        val images = ConversationImages(directory.resolve("replay"), library) { record, content ->
+            if (hold) { started.countDown(); check(release.await(5, java.util.concurrent.TimeUnit.SECONDS)) }
+            ImageWire.validateContent(record, content); content
+        }
+        val store = Store(); val provider = Provider(); val selected = ids(1)
+        val vm = create(store, provider, images = images); select(vm, selected); send(vm); completed(vm)
+        val message = vm.chat.value.messages.first(); hold = true
+        val read = async {
+            try { vm.sentThumbnail(message, selected.single()); false }
+            catch (failure: ApiFailure) { failure.problem == ApiProblem.IMAGE_UNAVAILABLE }
+        }
+        try {
+            withContext(Dispatchers.IO) { check(started.await(5, java.util.concurrent.TimeUnit.SECONDS)) }
+            withContext(main) { vm.newChat() }
+        } finally { release.countDown() }
+        assertTrue(read.await()); assertEquals(1, provider.inputs.size)
+    }
+
     @Test fun unsupportedCapabilityAndMissingFilesPreserveExactDraftAndSelectionWithZeroRequests() = runBlocking {
         for (damage in listOf("unsupported", "missing", "corrupt", "deleted")) {
             val store = Store(); val provider = Provider(if (damage == "unsupported") "gpt-6.1-sol-unverified" else "gpt-6.1-sol")
