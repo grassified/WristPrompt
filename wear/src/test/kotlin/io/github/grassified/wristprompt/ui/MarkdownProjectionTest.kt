@@ -34,8 +34,8 @@ class MarkdownProjectionTest {
     @Test fun malformedLink() { assertEquals("[unfinished](",text("[unfinished](")); assertNull(MarkdownLink("x","https://[").host) }
     @Test fun htmlLiteral() { assertEquals("<script>alert(1)</script>",text("<script>alert(1)</script>")); assertTrue(text("a <img src='x'>").contains("<img")) }
     @Test fun imageAltOnly() { val b=p.blocks("![diagram](https://example.invalid/private)").single(); assertEquals("[Image: diagram]",b.inline.text); assertTrue(b.links.isEmpty()) }
-    @Test fun tableRecords() { val b=p.blocks("| Model | Speed | Quality |\n|---|---|---|\n|Luna|Fast|Good|\n|Sol|Medium|Better|"); assertEquals(listOf("Luna","Speed: Fast","Quality: Good","Sol","Speed: Medium","Quality: Better"),b.map { it.inline.text }) }
-    @Test fun missingHeadersAndCells() { assertEquals(listOf("x","Column 2: (empty)"),p.blocks("|Name| |\n|---|---|\n|x|").map { it.inline.text }) }
+    @Test fun tableRecords() { val b=p.blocks("| Model | Speed | Quality |\n|---|---|---|\n|Luna|Fast|Good|\n|Sol|Medium|Better|"); assertEquals(listOf("Model: Luna","Speed: Fast","Quality: Good","Model: Sol","Speed: Medium","Quality: Better"),b.map { it.inline.text }) }
+    @Test fun missingHeadersAndCells() { assertEquals(listOf("Name: x","Column 2: (empty)"),p.blocks("|Name| |\n|---|---|\n|x|").map { it.inline.text }) }
     @Test fun extraCellsPreserved() { val source="|A|B|\n|---|---|\n|1|2|extra|"; assertEquals(source,text(source)); assertEquals(MarkdownKind.PLAIN,p.blocks(source).first().kind) }
     @Test fun tableLimitFallback() { val source="|A|B|\n|---|---|\n"+"|1|2|\n".repeat(101); assertEquals(source,text(source)) }
     @Test fun unicode() { val s="İstanbul e\u0301 👨‍👩‍👧‍👦 🇹🇷 👍🏽 𐐀"; assertEquals(s,text("**$s**")) }
