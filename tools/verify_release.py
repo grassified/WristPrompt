@@ -71,7 +71,8 @@ def verify_notices(apk, tag):
         files = {name.removeprefix('assets/legal/') for name in archive.namelist() if name.startswith('assets/legal/')}
         if not required.issubset(files) or not any(name.startswith('notice-') for name in files):
             raise ValueError('APK distribution license/notice bundle is incomplete')
-        if f'/tree/{tag}' not in archive.read('assets/legal/SOURCE.txt').decode():
+        expected_source = f'https://github.com/grassified/WristPrompt/tree/{tag}'
+        if expected_source not in archive.read('assets/legal/SOURCE.txt').decode().split():
             raise ValueError('APK corresponding-source reference does not match the release')
 
 

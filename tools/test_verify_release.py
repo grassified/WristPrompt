@@ -49,11 +49,19 @@ class ReleaseVerificationTest(unittest.TestCase):
             with zipfile.ZipFile(apk, 'w') as archive:
                 archive.writestr('assets/legal/LICENSE', 'synthetic')
             with self.assertRaises(ValueError): verify_notices(apk, 'v0.1.1')
-            with zipfile.ZipFile(apk, 'w') as archive:
-                for name in ('LICENSE', 'LICENSE_EXCEPTION.md', 'THIRD_PARTY_NOTICES.md', 'APACHE-2.0.txt', 'INVENTORY.txt', 'notice-0001.txt'):
-                    archive.writestr('assets/legal/'+name, 'synthetic')
-                archive.writestr('assets/legal/SOURCE.txt', 'https://example.invalid/tree/v0.1.0')
-            with self.assertRaises(ValueError): verify_notices(apk, 'v0.1.1')
+            for source, accepted in (
+                ('https://github.com/grassified/WristPrompt/tree/v0.1.10', False),
+                ('https://example.invalid/tree/v0.1.1', False),
+                ('https://github.com/grassified/WristPrompt/tree/v0.1.1', True),
+            ):
+                with zipfile.ZipFile(apk, 'w') as archive:
+                    for name in ('LICENSE', 'LICENSE_EXCEPTION.md', 'THIRD_PARTY_NOTICES.md', 'APACHE-2.0.txt', 'INVENTORY.txt', 'notice-0001.txt'):
+                        archive.writestr('assets/legal/'+name, 'synthetic')
+                    archive.writestr('assets/legal/SOURCE.txt', 'Source: '+source)
+                if accepted:
+                    verify_notices(apk, 'v0.1.1')
+                else:
+                    with self.assertRaises(ValueError): verify_notices(apk, 'v0.1.1')
 
 
 if __name__ == '__main__':

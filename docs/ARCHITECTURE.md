@@ -56,8 +56,9 @@ Current bounds include 8,192 prompt characters, 12 attempts and 196,608 context 
 ## Lifecycle and presentation
 
 Retained ViewModels own work across ordinary Activity recreation. Process death
-loses chat/replay and active work; startup does not replay an old request. Settings,
-credentials and model preference are distinct persistent state. Screen-off/background
+discards active work, live output and unsent drafts. Completed conversations and
+validated replay restore locally and idle; startup does not replay an old request.
+Settings, credentials and model preference are distinct persistent state. Screen-off/background
 continuation remains best effort: no foreground service, WorkManager, wake lock,
 connectivity observer or polling was added.
 
