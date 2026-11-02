@@ -2,15 +2,21 @@
 
 Your key. Your model. Your watch.
 
+[![CI](https://github.com/grassified/WristPrompt/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/grassified/WristPrompt/actions/workflows/ci.yml)
+
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-purple) ![Platform](https://img.shields.io/badge/Android-Wear_OS-green) ![License](https://img.shields.io/badge/license-GPL--3.0--only_%2B_linking_exception-blue)
 
 A native, local-first OpenAI client for Wear OS with an Android setup companion.
 Continue with ChatGPT or choose an explicit API-key billing path. After setup,
 inference runs directly on the watch, with no WristPrompt account or backend.
 
-**v0.1.0 is an early source/developer release: READY WITH NON-BLOCKING DEBT.**
-Build a matched phone/watch pair locally. No production-signed installable binaries
-are distributed with this release. WristPrompt is not affiliated with OpenAI.
+**v0.1.1 is a release candidate.** Structured Wear tables and completed-transcript
+photo thumbnails have automated/emulator evidence; focused owner physical
+acceptance and production signing remain pending. See [candidate acceptance](docs/V0_1_1_ACCEPTANCE.md)
+and [distribution checkpoint](docs/RELEASE_SIGNING.md). No v0.1.1 binaries are published.
+
+The latest published release, v0.1.0, is an early source-only prerelease. Build a
+matched phone/watch pair locally. WristPrompt is not affiliated with OpenAI.
 
 ## Why WristPrompt
 
@@ -34,7 +40,9 @@ context go to OpenAI. Google Play services may relay phone/watch Data Layer traf
   exposes **Default only** because authoritative per-model native effort lists are unavailable.
 - API-key image-generation implementation and fullscreen zoom/pan viewer. Automated/emulator
   acceptance passed; owner live API-key verification is blocked by unavailable credentials.
-- Native Markdown, horizontally scrollable code, rotary navigation and round-screen UI.
+- Native Markdown with labelled stacked table records and exact readable fallback.
+- Completed-user-message thumbnails from private conversation-owned photos.
+- Horizontally scrollable code, rotary navigation and round-screen UI.
 - Account, Settings and sanitized Diagnostics; no analytics or developer-operated cloud sync.
 
 ## Architecture
@@ -67,13 +75,13 @@ or a live paid API-key success claim. TalkBack and battery/runtime profiling rem
 
 ## Known limitations
 
-- [#1](https://github.com/grassified/WristPrompt/issues/1): structured Wear table records
-  are absent on the tested physical path; content has a readable list fallback.
+- [#1](https://github.com/grassified/WristPrompt/issues/1) and
+  [#32](https://github.com/grassified/WristPrompt/issues/32): new table/thumbnail UX
+  awaits focused owner physical acceptance; automated/emulator checks pass.
 - [#11](https://github.com/grassified/WristPrompt/issues/11): live API-key image generation
   owner verification is blocked because no owner API key is available. ChatGPT-plan
   image generation is unsupported by design; optional generation does not gate core readiness.
 - ChatGPT-plan Thinking is Default-only under the current capability contract.
-- Sent input-image thumbnails are not shown in the completed chat transcript.
 - No cloud chat sync. Unsent drafts and streaming tokens are not durable across process death.
 - Saved continuation requires compatible original account/billing/model ownership.
   Screen-off/background continuation is best effort.
@@ -82,7 +90,7 @@ or a live paid API-key success claim. TalkBack and battery/runtime profiling rem
 
 Use full JDK 17, SDK Platform `android-37.0`, Build Tools `36.0.0` and the included
 Gradle wrapper. Minimum SDK: Wear 30, phone 26; compile / target SDK: 37 / 36.
-Both apps use `io.github.grassified.wristprompt`, version `0.1.0` / code `1`.
+Both apps use `io.github.grassified.wristprompt`, candidate version `0.1.1` / code `2`.
 
 ```sh
 export JAVA_HOME="/path/to/jdk17"
@@ -97,6 +105,7 @@ See [development setup](DEVELOPMENT.md) and [testing](docs/TESTING.md).
 ## Project documentation
 
 - [Architecture](docs/ARCHITECTURE.md), [development](DEVELOPMENT.md), [testing](docs/TESTING.md)
+- [CI](docs/CI.md), [release signing](docs/RELEASE_SIGNING.md), [v0.2.0 plan](docs/ROADMAP_v0.2.0.md)
 - [Roadmap](ROADMAP.md), [specification](PROJECT_SPEC.md), [decisions](DECISIONS.md)
 - [Changelog](CHANGELOG.md), [contributing](CONTRIBUTING.md), [developer handoff](docs/CODEX_HANDOFF.md)
 - [Security](SECURITY.md), [privacy](PRIVACY.md), [historical evidence](docs/history/README.md)

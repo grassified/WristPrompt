@@ -27,7 +27,7 @@ git diff --check
 ```
 
 Shared tests compile into both apps. Use `--tests` for the affected actual suite.
-Release output is currently unsigned/unminified; compilation is not release readiness.
+Ordinary validation release output is unsigned/unminified; compilation is not release readiness.
 No stable binaries or signing keys should be uploaded by this workflow.
 
 ## Synthetic emulator scenarios
@@ -97,3 +97,11 @@ merely to validate prose. Broaden validation if production/build behavior change
 [CI](CI.md) runs the automated baseline on PRs and main without owner credentials
 or production signing. Run `python3 tools/check_markdown_links.py` locally for the
 same local-target check. Inspect the actual workflow result before merging.
+
+
+## v0.1.1 focused acceptance and distribution
+
+[V0_1_1_ACCEPTANCE.md](V0_1_1_ACCEPTANCE.md) records new table/thumbnail evidence and
+the short owner checklist. [RELEASE_SIGNING.md](RELEASE_SIGNING.md) distinguishes
+unsigned CI, temporary synthetic signing validation and actual production identity.
+A signed build must pass `tools/verify_release.py` before any distribution.

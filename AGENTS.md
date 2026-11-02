@@ -1,12 +1,14 @@
 # WristPrompt engineering rules
 
-**2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
-Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
-presets, photo sync, supported multi-image inference, composer/IME, general UI and
-ChatGPT-plan Thinking. Default-only plan Thinking is intentional; explicit API-key
-native effort was not physically tested (automated contract coverage passes).
-#1 remains readable table-fallback debt; optional #11 live API-key generation is
-BLOCKED by unavailable owner credential. See [acceptance](docs/D7_G_ACCEPTANCE.md).
+**2026-11-02 — v0.1.1 candidate: OWNER ACCEPTANCE / SIGNING PENDING.**
+#1 labelled table records and #32 conversation-owned transcript thumbnails are
+merged with automated/emulator evidence. Both issues remain open for focused
+Galaxy Watch 7 acceptance. CI is merged and passed on GitHub. Production signing
+and distribution are prepared, but no permanent key, tag or v0.1.1 release exists.
+Optional #11 remains blocked by the absent owner API key and does not block this
+release. See [candidate acceptance](docs/V0_1_1_ACCEPTANCE.md),
+[signing checkpoint](docs/RELEASE_SIGNING.md) and [v0.2.0 plan](docs/ROADMAP_v0.2.0.md).
+The latest published version is the v0.1.0 source-only prerelease.
 
 
 ## Contribution branch rules
@@ -167,14 +169,15 @@ changes require repository/security/link/whitespace checks, not full D5 acceptan
 - Model picker shows only authoritative display name and selected state; no
   speed/quality/reasoning/capability metadata or inferred ranking.
 
-### Current project state and persistence invariants
+### Project baseline and persistence invariants
 
 D5 is PASS WITH KNOWN DEBT; the physical Markdown table-rendering debt and
 untested TalkBack remain documented. D6-A–D implementation/nonphysical acceptance
 is merged on `main` (PR #21).
 D7-A–F and D7-H implementation is merged (PRs #22/#23/#25/#26/#27/#28/#30).
-Owner core physical acceptance is complete for v0.1.0; #1 and optional #11 remain
-non-blocking. Live paid API-key checks remain unverified.
+Owner core physical acceptance is complete for v0.1.0. The v0.1.1 candidate
+implements #1/#32, with focused owner physical acceptance still pending; optional
+#11 remains non-blocking. Live paid API-key checks remain unverified.
 See [docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md) for the integrated gate.
 Check [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md),
 [ROADMAP.md](ROADMAP.md), and [docs/D6_D7_BACKLOG.md](docs/D6_D7_BACKLOG.md) for

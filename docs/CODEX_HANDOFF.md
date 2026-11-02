@@ -1,12 +1,14 @@
 # Codex handoff
 
-**2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
-Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
-presets, photo sync, supported multi-image inference, composer/IME, general UI and
-ChatGPT-plan Thinking. Default-only plan Thinking is intentional; explicit API-key
-native effort was not physically tested (automated contract coverage passes).
-#1 remains readable table-fallback debt; optional #11 live API-key generation is
-BLOCKED by unavailable owner credential. See [acceptance](D7_G_ACCEPTANCE.md).
+**2026-11-02 — v0.1.1 candidate: OWNER ACCEPTANCE / SIGNING PENDING.**
+#1 labelled table records and #32 conversation-owned transcript thumbnails are
+merged with automated/emulator evidence. Both issues remain open for focused
+Galaxy Watch 7 acceptance. CI is merged and passed on GitHub. Production signing
+and distribution are prepared, but no permanent key, tag or v0.1.1 release exists.
+Optional #11 remains blocked by the absent owner API key and does not block this
+release. See [candidate acceptance](V0_1_1_ACCEPTANCE.md),
+[signing checkpoint](RELEASE_SIGNING.md) and [v0.2.0 plan](ROADMAP_v0.2.0.md).
+The latest published version is the v0.1.0 source-only prerelease.
 
 
 This file and the linked repository documents are sufficient for a fresh developer
@@ -15,6 +17,14 @@ configuration is required to understand the project. Build a separate matched
 phone/watch debug pair; preserve owner installations and keys.
 
 ## Current state
+
+Current source targets v0.1.1 / code 2. #1 implementation PR #34 and #32 PR #35
+are merged; CI PR #36 passed its hosted gate and is merged. Follow
+[RELEASE_SIGNING.md](RELEASE_SIGNING.md) before any permanent key creation/tag.
+[V0_1_1_ACCEPTANCE.md](V0_1_1_ACCEPTANCE.md) owns the new focused physical checklist.
+The v0.2.0 document is planning only, not authorization for feature implementation.
+
+### Published v0.1.0 baseline
 
 D6-A–D and D7-A–F/H implementations are merged. Core owner physical acceptance
 is complete; see [D7_G_ACCEPTANCE.md](D7_G_ACCEPTANCE.md) for exact scope and

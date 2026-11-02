@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.1.1] - Unreleased
+
+- Labelled stacked Markdown table records with local exact fallback; surrounding
+  Markdown and source content remain intact.
+- Ordered sent-photo thumbnails in completed conversations, including restore;
+  unavailable conversation copies show a safe placeholder.
+- GitHub Actions validates both apps, tooling, scenario isolation and local links.
+- Prepared explicit production signing, matched-APK verification, distribution
+  notice bundles and a controlled prerelease workflow. Permanent signing identity,
+  owner UX acceptance and publication remain pending; no installable release claimed.
+- Added a provider-isolation-first v0.2.0 roadmap; no new providers implemented.
+
+
 ## [0.1.0] - 2026-11-02
 
 First early-access source/developer release. Core acceptance: **READY WITH

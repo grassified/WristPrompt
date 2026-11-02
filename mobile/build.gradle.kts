@@ -4,6 +4,8 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+apply(from = rootProject.file("gradle/release-signing.gradle.kts"))
+
 android {
     namespace = "io.github.grassified.wristprompt"
     compileSdk = 37
@@ -12,13 +14,24 @@ android {
         applicationId = "io.github.grassified.wristprompt"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.1.1"
         testInstrumentationRunner = "io.github.grassified.wristprompt.images.ImageImportInstrumentation"
     }
 
     buildFeatures {
         compose = true
+    }
+
+    // Shared validation above requires a complete environment; never use debug signing.
+    providers.environmentVariable("WRISTPROMPT_RELEASE_STORE_FILE").orNull?.let { path ->
+        val production = signingConfigs.create("production") {
+            storeFile = file(path)
+            storePassword = providers.environmentVariable("WRISTPROMPT_RELEASE_STORE_PASSWORD").get()
+            keyAlias = providers.environmentVariable("WRISTPROMPT_RELEASE_KEY_ALIAS").get()
+            keyPassword = providers.environmentVariable("WRISTPROMPT_RELEASE_KEY_PASSWORD").get()
+        }
+        buildTypes.getByName("release").signingConfig = production
     }
 
     // One protocol implementation, compiled into both apps without another Gradle module.
@@ -51,4 +64,12 @@ dependencies {
     implementation(libs.lifecycle.runtime.compose)
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
+}
+
+extra["wristpromptVersionName"] = android.defaultConfig.versionName!!
+apply(from = rootProject.file("gradle/distribution-notices.gradle.kts"))
+
+val distributionAssets = extra["wristpromptDistributionAssets"] as org.gradle.api.file.DirectoryProperty
+androidComponents.onVariants { variant ->
+    variant.sources.assets?.addGeneratedSourceDirectory(tasks.named("generateDistributionNotices")) { distributionAssets }
 }

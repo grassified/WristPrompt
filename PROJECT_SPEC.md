@@ -1,4 +1,4 @@
-# WristPrompt v0.1.0
+# WristPrompt v0.1.1 candidate
 
 Your key. Your model. Your watch.
 
@@ -41,6 +41,16 @@ always-on prompt, automatic inference, model switch or billing fallback.
 Core owner acceptance: READY WITH NON-BLOCKING DEBT; see
 [final acceptance](docs/D7_G_ACCEPTANCE.md). #1 structured-table presentation and
 #11 optional live API-key generation verification remain non-blocking.
+
+## v0.1.1 release gate
+
+Supported Markdown tables must retain column/value relationships as ordered native
+stacked records, with exact readable fallback for unsupported input. Completed
+user-image thumbnails must use conversation-owned files and restore safely;
+unavailable copies never fall back to library/remote content or trigger inference.
+Focused owner physical acceptance remains required for #1/#32. Distribution needs
+matched production signing and verified artifacts; see
+[signing checkpoint](docs/RELEASE_SIGNING.md). No v0.2.0 provider work ships here.
 
 ## Runtime responsibilities
 

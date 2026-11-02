@@ -3,13 +3,15 @@
 Dated checkpoints below retain their original evidence. The 2026-11-02 status
 and D7-G acceptance supersede historical pending statements.
 
-**2026-11-02 — v0.1.0: READY WITH NON-BLOCKING DEBT.**
-Owner Galaxy Watch 7 / paired Android acceptance passed startup/auth, persistence,
-presets, photo sync, supported multi-image inference, composer/IME, general UI and
-ChatGPT-plan Thinking. Default-only plan Thinking is intentional; explicit API-key
-native effort was not physically tested (automated contract coverage passes).
-#1 remains readable table-fallback debt; optional #11 live API-key generation is
-BLOCKED by unavailable owner credential. See [acceptance](docs/D7_G_ACCEPTANCE.md).
+**2026-11-02 — v0.1.1 candidate: OWNER ACCEPTANCE / SIGNING PENDING.**
+#1 labelled table records and #32 conversation-owned transcript thumbnails are
+merged with automated/emulator evidence. Both issues remain open for focused
+Galaxy Watch 7 acceptance. CI is merged and passed on GitHub. Production signing
+and distribution are prepared, but no permanent key, tag or v0.1.1 release exists.
+Optional #11 remains blocked by the absent owner API key and does not block this
+release. See [candidate acceptance](docs/V0_1_1_ACCEPTANCE.md),
+[signing checkpoint](docs/RELEASE_SIGNING.md) and [v0.2.0 plan](docs/ROADMAP_v0.2.0.md).
+The latest published version is the v0.1.0 source-only prerelease.
 
 
 ## Current Day 2 gate — 2026-10-29
