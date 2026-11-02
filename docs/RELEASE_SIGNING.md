@@ -1,10 +1,13 @@
 # Release signing and distribution
 
-Status for v0.1.1: **OWNER LOCAL SIGNING STEPS PENDING**. On 2026-11-02 the
-owner explicitly approved a new permanent production identity and committed to
-enter/save passwords and confirm a secure backup locally. Creation has not yet
-been confirmed; no production certificate is available. Known local signing
-locations contained only development keys at inspection.
+Status for v0.1.1: **OWNER SIGNING CHECKPOINT COMPLETE** (2026-11-02).
+The owner confirmed permanent identity creation, password-manager recovery metadata
+and an independent secure backup. Primary file hash matches the owner-supplied
+hash; the key is outside Git and owner-readable only. Backup integrity/recovery
+are owner-attested, not an agent restore test. No password was supplied in chat.
+Approved production certificate SHA-256 (public):
+`b19254e99ea1aefc1ce3b4b533e765f65ac4d9425d742a8fa1dbc57523077a6f`.
+Actual signed APKs must pass this certificate gate before publication.
 Never reuse the owner debug key as a public release key.
 
 ## Identity and recovery checkpoint
@@ -25,9 +28,10 @@ update a debug-signed install in place. Do not uninstall/clear owner apps to tes
 this. Perform focused physical UX acceptance with the compatible debug pair, and
 signature/install checks on disposable emulators or separately authorized devices.
 
-## Local creation — owner action, not executed
+## Local creation — completed by owner; reference only
 
-After explicit approval, run this in an owner-controlled terminal. `keytool`
+The owner completed creation for v0.1.1; do not create or replace that key again.
+For a separately approved new identity, use an owner-controlled terminal. `keytool`
 interactively requests the password; record it directly in the password manager.
 PKCS12 normally uses the same store/key password; record that relationship.
 The public certificate uses a project name rather than personal contact details.
@@ -82,16 +86,17 @@ matched APK pair and SHA256SUMS. Known owner debug identity and Android Debug
 certificates are rejected. A synthetic temporary key can exercise this mechanism;
 it is never a production identity or distributable owner release.
 
-## GitHub configuration — secrets pending owner checkpoint
+## GitHub configuration — configured
 
 The `production-release` environment was created and read back on 2026-11-02:
 required reviewer `grassified`, administrator bypass disabled, allowed branch
 `main` and tag pattern `v*`. Self-review is allowed so the sole owner can explicitly
 approve their own release run. These deployment restrictions do not create a
 repository tag-protection rule; the workflow separately checks exact annotated
-tag/main identity. No signing secrets or public fingerprint are configured yet.
-Keep signing secrets confined to this environment, unavailable to PR validation.
-After the local identity/backup checkpoint, add:
+tag/main identity. All four secret names below and the matching public certificate
+variable were verified through GitHub on 2026-11-02. Secret contents are not read
+back. The signed artifact gate verifies their actual combined operation.
+Keep signing secrets confined to this environment, unavailable to PR validation:
 
 | Environment secret | Contents |
 | --- | --- |
@@ -119,8 +124,10 @@ values. The CI validation workflow never consumes production signing secrets.
 
 [Signed release workflow](../.github/workflows/release.yml) accepts an annotated
 `vMAJOR.MINOR.PATCH` tag on the exact current main commit (or manual dispatch naming
-that tag). The release PR must first pass CI, focused owner physical acceptance
-and this signing checkpoint. Do not tag while those gates are pending.
+that tag). The release PR must first pass CI and this signing checkpoint. The owner
+explicitly deferred focused #1/#32 physical acceptance as non-blocking for v0.1.1;
+keep both issues OPEN / NOT YET VERIFIED PHYSICALLY. Do not tag if a non-physical
+release gate fails.
 
 The workflow reruns tests/lint/builds/Python/isolation/links before decoding the
 keystore into a private ephemeral runner file. Signing caches are disabled. Both

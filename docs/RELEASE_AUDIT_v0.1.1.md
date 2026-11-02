@@ -1,37 +1,55 @@
-# v0.1.1 release candidate audit — 2026-11-02
+# v0.1.1 release audit — 2026-11-02
 
-Publication gate: PENDING
+Publication gate: READY
 
-**NOT READY — focused owner physical acceptance and permanent production signing
-checkpoint remain required.** No v0.1.1 tag or release has been created. Source-only
-publication is not an approved fallback. The release workflow requires this audit's
-publication gate to be READY before it can sign/publish; change it only after the
-recorded evidence supports that disposition.
+**AUTHORIZED FOR PRODUCTION-SIGNED PRERELEASE — PHYSICAL ACCEPTANCE DEFERRED.**
+This is the source audit immediately before merge/tag/publication, not a claim
+that the publication workflow already ran. Publication must still pass the
+workflow's real production-signature and artifact gates. Actual release status,
+asset hashes and final main/tag SHAs are recorded by the
+[release page](https://github.com/grassified/WristPrompt/releases/tag/v0.1.1),
+[workflow runs](https://github.com/grassified/WristPrompt/actions/workflows/release.yml)
+and final publication report.
+
+## Owner policy and evidence boundary
+
+On 2026-11-02 the owner explicitly authorized v0.1.1 publication after all
+non-physical release gates pass and changed #1/#32 physical acceptance to
+**DEFERRED / NON-BLOCKING**. Both are VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR,
+but **NOT YET VERIFIED PHYSICALLY on the owner Galaxy Watch 7**. Keep #1/#32 OPEN;
+only actual future passing owner results can establish physical acceptance.
+#11 remains OPEN / BLOCKED by the unavailable funded owner OpenAI API key and is
+optional/non-blocking. No historical physical evidence is rewritten.
+
+Earlier candidate holds for physical testing and key creation were accurate at
+those checkpoints; the explicit owner policy/signing confirmation supersedes them.
+v0.1.0 remains immutable/source-only at
+`ff849dca0a25ed7a24e8f10fd4a8fe479da38410`; do not move its tag or modify its assets.
+
+## Integrated scope
 
 Starting main: `3f6c1c8ae1dfbdfff28f0428ccad111c91bb37c9` (clean).
 Integrated main before release preparation: `c768055ee1e800aea6abd5f7a62811594e7b29a9`.
-The release branch is `release/v0.1.1`; it is not final main or a published tag.
-v0.1.0 remains the source-only prerelease at
-`ff849dca0a25ed7a24e8f10fd4a8fe479da38410` and must not move.
+Release preparation uses `release/v0.1.1`, [PR #37](https://github.com/grassified/WristPrompt/pull/37).
+No next-cycle implementation or dependency upgrade is included.
 
-## Integrated changes
-
-| Scope | PR | Merge SHA | Acceptance |
+| Scope | PR | Merge SHA | Evidence / issue status |
 | --- | --- | --- | --- |
-| #1 labelled stacked table records/local exact fallback | [#34](https://github.com/grassified/WristPrompt/pull/34) | `6ed5dcd7397ff0d336a0384a20f93e3ca71ca029` | Automated/emulator PASS; issue OPEN, owner physical PENDING |
-| #32 completed-user conversation-owned thumbnails | [#35](https://github.com/grassified/WristPrompt/pull/35) | `cf2c9b0178e9fb4b31319f15565130e50ebf8582` | Automated/native emulator PASS; issue OPEN, owner physical PENDING |
-| CI | [#36](https://github.com/grassified/WristPrompt/pull/36) | `c768055ee1e800aea6abd5f7a62811594e7b29a9` | [Hosted run 41498858852](https://github.com/grassified/WristPrompt/actions/runs/41498858852) SUCCESS before merge |
+| #1 labelled stacked table records/local exact fallback | [#34](https://github.com/grassified/WristPrompt/pull/34) | `6ed5dcd7397ff0d336a0384a20f93e3ca71ca029` | Automated/emulator PASS; OPEN / physical deferred |
+| #32 completed-user conversation-owned thumbnails | [#35](https://github.com/grassified/WristPrompt/pull/35) | `cf2c9b0178e9fb4b31319f15565130e50ebf8582` | Automated/native emulator PASS; OPEN / physical deferred |
+| CI | [#36](https://github.com/grassified/WristPrompt/pull/36) | `c768055ee1e800aea6abd5f7a62811594e7b29a9` | Hosted implementation/main gates PASS |
 
-[Focused acceptance](V0_1_1_ACCEPTANCE.md) records exact UX test commands/counts,
-emulator scope and the short owner checklist. No owner physical PASS is inferred.
-Optional #11 remains OPEN / BLOCKED by the absent funded owner OpenAI API key.
-It does not block v0.1.1. No v0.2.0 feature implementation or new provider exists.
+The original physical table payload was not captured; the implementation does
+not claim its exact root cause. Thumbnail reads use validated conversation files
+only, with ownership rechecks and display-scope resets; no library substitution.
+Replay, Stop, explicit Send, selected billing/auth path and generated viewer are
+unchanged. Two test teardowns join cancellation before releasing test resources.
 
-## Final automated gate
+## Automated release gate
 
-VERIFIED AUTOMATICALLY on implementation candidate
-`b7cf8aed1bebcb67374a29eb1ae1f9ab0a799999`, using documented full JDK 17 / SDK 37 /
-Build Tools 36.0.0 and preserved development signing:
+VERIFIED AUTOMATICALLY: the complete clean gate was rerun for publication with
+documented full JDK 17, SDK Platform 37 / Build Tools 36.0.0 and preserved development
+signing. Ordinary release variants remain unsigned validation artifacts:
 
 ```sh
 ./gradlew clean :wear:testDebugUnitTest :mobile:testDebugUnitTest :wear:assembleDebug :mobile:assembleDebug :wear:assembleRelease :mobile:assembleRelease :wear:lintDebug :mobile:lintDebug --no-daemon --console=plain
@@ -41,139 +59,97 @@ python3 tools/check_markdown_links.py
 git diff --check
 ```
 
-- Gradle BUILD SUCCESSFUL, 2m 50s; 198 tasks (196 executed, two up-to-date).
+- Clean Gradle BUILD SUCCESSFUL in 2m 48s; 198 tasks (196 executed, two up-to-date).
 - Wear **622 tests / 72 suites**; mobile **98 / 17**; zero failures/errors/skips.
-- Both debug/release builds and both lints PASS. Wear zero errors / 14 warnings;
-  mobile zero errors / four warnings. Warnings remain dependency/version notices,
-  existing manifest/vector/KTX/recents findings and the debug-only fixture's extra
-  recents warning; no suppression or unrelated production cleanup.
-- Python **51/51 PASS**, including release verifier and local-link negative fixtures.
-- Source/manifest/DEX scenario isolation PASS; all three native instrumentation
-  classes and the new debug transcript activity are absent from release DEX.
-- Both workflow files pass actionlint 1.7.12. Main CI
-  [41500111486](https://github.com/grassified/WristPrompt/actions/runs/41500111486)
-  passed on integrated main. The draft [release PR #37](https://github.com/grassified/WristPrompt/pull/37)
-  passed [run 41502122950](https://github.com/grassified/WristPrompt/actions/runs/41502122950)
-  on candidate 7790001. The final audit/source-link review commit must have its own
-  green hosted check; inspect PR #37 for its latest head/result.
-- Canonical LICENSE, exception, dependency pins and wrapper are unchanged. APKs
-  contain 98 distinct resolved production artifacts across the two inventories;
-  mobile preserves 77 upstream notice entries, Wear 82, plus project/Apache texts
-  and exact-tag source references. No private machine paths occur in inventories.
-- Both final debug APK signatures match the preserved development certificate.
-  Both ordinary release APKs are unsigned, with exact package/version metadata,
-  disabled backup/cleartext and no debug/test flags. Existing exported integration
-  surfaces are unchanged. No debug/unsigned APK is a production release asset.
-- Bounded candidate scan: 323 files, one binary excluded from text patterns; no
-  private-key/OpenAI/GitHub-token patterns, private owner paths or tracked
-  keystores/APKs/.env/local.properties. This is not proof against every possible
-  secret. Local Markdown target and whitespace results are recorded below;
-  heading fragments and remote link availability are not checked.
+- Both debug/release assemblies and debug lints PASS. Wear zero errors / 14 warnings;
+  mobile zero errors / four warnings. Existing dependency/version/manifest/vector/
+  KTX/recents findings plus the debug-only fixture recents warning remain; no
+  suppression or unrelated cleanup.
+- Python **51/51 PASS**, including signing/verifier/link negative fixtures.
+- Debug manifest/source/DEX isolation PASS: three native instrumentation classes
+  and DebugTranscriptActivity are absent from release DEX.
+- Both workflow files pass actionlint 1.7.12. Hosted `validate` /
+  **Android and repository checks** runs app tests/builds/lint, Python, isolation,
+  local links and range whitespace. Only test/lint reports are uploaded.
+- Earlier main [41500111486](https://github.com/grassified/WristPrompt/actions/runs/41500111486)
+  and candidate [41504838264](https://github.com/grassified/WristPrompt/actions/runs/41504838264)
+  passed. The final policy/signing-documentation commit must have green PR CI
+  before merge; final main CI must be green before tag. Final run URLs are recorded
+  in PR #37 and the publication report without a self-referential source rewrite.
+- All 184 local Markdown targets in 70 tracked documents resolve; heading
+  fragments and remote availability are
+  outside that check. Final counts are in the publication report. Whitespace,
+  final diff/commit-range scope and bounded secret/private-path checks PASS.
+- Bounded source scan: 323 tracked files, one binary excluded; no matching private
+  key/OpenAI/GitHub-token/private owner path patterns or tracked key/APK/.env/
+  local.properties. This is not proof against every possible secret.
+- Canonical LICENSE, linking exception, dependency pins and wrapper are unchanged.
+  APK inventories contain 98 distinct resolved production artifacts in total,
+  77 mobile / 82 Wear upstream notice entries, project/Apache texts and exact-tag
+  source/build references. No private paths appear in inventories.
 
-Signing rehearsal: VERIFIED AUTOMATICALLY with a disposable one-day synthetic
-identity, explicitly not production. Required/partial/malformed/missing-file signing
-configuration fails closed. Both signed APKs pass matching signer, package/version,
-manifest, notice-bundle and checksum verification. A wrong approved certificate is
-rejected before distribution output. The private test key was deleted automatically.
-The protected GitHub production-signing workflow has **not** been run.
+A disposable one-day synthetic signing rehearsal previously passed complete/
+partial/malformed/missing-file configuration gates, matched signed-pair verification
+and wrong-approved-certificate rejection. The test key was deleted. This rehearsal
+is not production signing evidence.
 
-VERIFIED ON EMULATOR: the final candidate debug APK additionally passed 11 smoke
-and three table/fallback readiness fixtures on the dedicated Watch7 AVD. Readiness
-is not visual review of all fixtures. Detailed UX evidence remains the integrated
-23 Markdown fixtures plus separate normal/2x touch/rotary visual checks, and four
-native thumbnail seed/process-restart checks at 1.0/2.0 in
-[V0_1_1_ACCEPTANCE.md](V0_1_1_ACCEPTANCE.md). Production UX source has not changed
-since those accepted automated/emulator implementation checkpoints. No live paid
-provider, paired transfer or physical result is inferred.
+## Emulator / owner device
 
-### Local test artifacts (not release downloads)
+VERIFIED ON EMULATOR: 23 Markdown readiness fixtures with additional normal/2x
+visual touch/rotary review of labelled records/order and surrounding prose/code;
+four separate-process native JPEG/SQLite thumbnail seed/restart checks at 1.0/2.0,
+including ordered decoded Compose rows, source deletion, unavailable copies,
+history, scrolling and explicit continuation. Final candidate 11 smoke and three
+table/fallback readiness checks passed. Readiness is not a visual review of every
+fixture. Detailed commands/bounds remain in [focused acceptance](V0_1_1_ACCEPTANCE.md).
+No paired-delivery, live paid-provider or owner physical result is inferred.
+No owner app data was cleared, app uninstalled, session revoked or key replaced.
 
-The following artifacts were built from candidate b7cf8ae. Its 0.1.1 / code 2
-debug pair is compatible with existing development installs;
-do not uninstall/clear owner apps. Public DEVELOPMENT certificate SHA-256:
-`fd8491b6238368a04d58bd0653c35ff54a3a17fc9b31e53a6af7110579d37061`.
+## Production identity and protected publication
 
-| Local file | SHA-256 | Classification |
-| --- | --- | --- |
-| `mobile-debug.apk` | `38b7af05c27c76d492ec8c0a654961a4640a86af1f9bc78a7051891a42e2df7a` | Development testing only |
-| `mobile-release-unsigned.apk` | `2df832e393d424a5dd33533120da84eac54c46247e32c74bf6c8b458bb07d518` | Unsigned validation only |
-| `wear-debug.apk` | `278b9e2985eb19fa24c96ca121cfe5020091bebb1f6350306098ed222ee044ef` | Development testing only |
-| `wear-release-unsigned.apk` | `c0e129879dd50d47346af3da48c77450095390dba0d650ba331d3d58d91b5ce2` | Unsigned validation only |
+Both apps: application ID `io.github.grassified.wristprompt`, versionName `0.1.1`,
+versionCode `2`. Production key created: **YES — owner confirmed**. Owner confirmed
+password-manager recovery metadata and an independent secure backup with matching
+hash. Backup/restore is owner-attested; no destructive recovery test was run.
+Local primary hash matches the owner confirmation and permissions are owner-only.
+The key is outside Git; no private key or password is tracked or printed.
 
+Approved production certificate SHA-256 (public):
+`b19254e99ea1aefc1ce3b4b533e765f65ac4d9425d742a8fa1dbc57523077a6f`.
 
-## Signing and distribution
+The four `production-release` environment secret names and matching public repo
+variable were verified, without reading secret contents. Environment protections:
+required reviewer `grassified`, admin bypass disabled, deployment branch `main` /
+tag pattern `v*`; self-review allowed for the sole owner. The owner's explicit
+publication authorization permits release approval without another permission
+request. Deployment restrictions are not repository tag-protection rules.
 
-Both apps target versionName `0.1.1`, versionCode `2`, application ID
-`io.github.grassified.wristprompt`. Ordinary CI releases remain unsigned.
-[Signing contract](RELEASE_SIGNING.md) requires a complete environment and one
-approved production certificate shared by both apps. Requested/partial production
-configuration fails without a debug fallback. The controlled workflow uses no
-signing caches; only verified APKs/checksums reach publication. APKs bundle
-project/upstream notices and exact-tag Corresponding Source/build references.
+[Signing contract](RELEASE_SIGNING.md): complete explicit environment shared by
+both modules, requested/partial configuration fails closed, no debug fallback.
+The workflow validates exact annotated tag/current main/version and this READY
+audit, reruns all unsigned checks, signs without caches, verifies both real APKs
+against the approved fingerprint/package/version/manifest/notices, and generates
+checksums. Ephemeral signing files are removed. Only verified APKs/checksums are
+handed to a separate write-token job, which rechecks them and publishes via a draft.
+A failed gate must prevent publication; no source-only fallback is authorized.
 
-Production key created: **NO**. Production certificate SHA-256: **NOT AVAILABLE**.
-Owner approved a new permanent identity on 2026-11-02; local creation, password-
-manager recovery and independent secure backup confirmation remain pending.
-The `production-release` GitHub environment has required owner review, no admin
-bypass and deployment policies for branch `main` / tags `v*`, verified by API
-readback. Signing secrets and the public certificate variable remain absent. No
-production signatures, matching production pair, distribution APK hashes,
-downloadable assets, release URL, v0.1.1 tag SHA or prerelease status are claimed.
-Prepared target status is early-access **prerelease**, subject to actual publication.
-
-Expected future assets (not published):
+Only permitted assets:
 
 - `WristPrompt-v0.1.1-mobile.apk`
 - `WristPrompt-v0.1.1-wear.apk`
 - `SHA256SUMS.txt`
 
-## Remaining actions
+No debug or unsigned APK may be uploaded as production. Install both APKs as a
+matched pair; future updates must retain this production identity. Existing owner
+debug installs are incompatible with the production certificate: do not uninstall
+or clear them to test. Production certificate/artifact equality is established
+by actual workflow and downloaded-asset verification, not secret-name presence.
 
-1. Observe green CI on the final release-PR head; the complete clean local gate is PASS.
-2. Owner reports physical testing is unavailable now: focused Galaxy Watch 7
-   table/thumbnail acceptance and the short regression sanity check are DEFERRED /
-   NOT TESTED. Only actual passing results can close #1/#32.
-3. Complete the already-approved permanent identity creation locally, enter/save
-   passwords outside chat and confirm independent secure backup/recovery. Verify
-   the actual public certificate; do not reuse the development key.
-4. Protect/configure signing, verify a real matched production pair, finalize user
-   notes/audit, merge the release PR, verify main, annotate the exact main commit
-   as v0.1.1, and publish/verify the prerelease. Preserve owner development installs.
+## Remaining non-blocking work
 
-The [v0.2.0 roadmap](ROADMAP_v0.2.0.md) prioritizes provider/credential/replay isolation,
-then OpenRouter and staged native Anthropic/Gemini. Optional UX and release hardening
-have explicit dependencies/acceptance/security/physical criteria. No new roadmap
-issues were created; no next-cycle implementation is authorized by this document.
-
-Suggested commit: `release: prepare WristPrompt v0.1.1 signed distribution candidate`.
-
-
-## Repository checks and report boundaries
-
-Local Markdown targets: 185 in 70 tracked documents resolve after this audit
-update (fragments and remote availability excluded). No stale moved local target
-was found. `git diff --check` and final diff/commit-range scope review PASS.
-
-Current main at this checkpoint remains
-`c768055ee1e800aea6abd5f7a62811594e7b29a9`. Final v0.1.1 main/tag SHAs, GitHub Release
-URL/status, production certificate and production APK hashes remain NOT CREATED /
-NOT AVAILABLE. #1/#32/#11 are the intentionally open issues. No release asset,
-physical PASS, permanent key creation or GitHub production-signing PASS is claimed.
-The working tree should be clean after the documentation evidence commit; no
-user work was overwritten. Detailed changed-file scope is available in PRs
-#34/#35/#36 and release PR #37.
-
-
-Final review tightened the release verifier to match the exact repository/tag URL
-rather than a prefix (wrong-domain and v0.1.10/v0.1.1 negatives are tested), and
-corrected the architecture guide's stale pre-persistence process-death sentence.
-Focused Python verification remains 51/51. The complete clean gate was rerun on
-b7cf8ae and passed. Subsequent changes only record owner deferral/signing approval
-and environment protection; focused documentation checks apply locally. The final
-head still requires green hosted CI, recorded in PR #37 without claiming owner
-acceptance.
-
-Exact hosted job: `validate` / **Android and repository checks**. It runs both-app
-unit tests, debug/release assemblies and debug lint, Python tools, debug scenario
-isolation, local Markdown targets and range whitespace. Only test/lint reports
-are uploaded. The production signing/publication workflow is prepared, not run.
+#1/#32 owner physical acceptance and optional #11 remain open after release.
+TalkBack, battery/runtime profiling and paid API-key success remain unverified.
+The [v0.2.0 roadmap](ROADMAP_v0.2.0.md) prioritizes provider/credential/replay/
+capability isolation, then OpenRouter and staged native Anthropic/Gemini, with
+acceptance/security/physical criteria. No roadmap issues were created; no provider
+implementation begins as part of this release.

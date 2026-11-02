@@ -132,6 +132,6 @@ Official references checked 2026-10-28:
 
 Ordinary release assembly remains unsigned. Both modules share the explicit
 [production signing contract](docs/RELEASE_SIGNING.md); partial or required-but-missing
-configuration fails. Production key creation/backup and physical acceptance remain
-owner checkpoints. APKs include a generated `assets/legal/` notice inventory; no
+configuration fails. The owner confirmed permanent key creation/secure backup;
+focused #1/#32 physical checks are deferred and non-blocking for v0.1.1. APKs include a generated `assets/legal/` notice inventory; no
 dependency versions or existing development keys changed.

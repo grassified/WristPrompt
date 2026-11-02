@@ -10,13 +10,17 @@ A native, local-first OpenAI client for Wear OS with an Android setup companion.
 Continue with ChatGPT or choose an explicit API-key billing path. After setup,
 inference runs directly on the watch, with no WristPrompt account or backend.
 
-**v0.1.1 is a release candidate.** Structured Wear tables and completed-transcript
-photo thumbnails have automated/emulator evidence; focused owner physical
-acceptance and production signing remain pending. See [candidate acceptance](docs/V0_1_1_ACCEPTANCE.md)
-and [distribution checkpoint](docs/RELEASE_SIGNING.md). No v0.1.1 binaries are published.
+**v0.1.1 — early-access prerelease.** Structured Wear tables and completed-transcript
+photo thumbnails are VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR, but NOT YET
+VERIFIED PHYSICALLY on the owner Galaxy Watch 7. The owner explicitly deferred
+those checks as non-blocking; #1/#32 remain open. See [acceptance](docs/V0_1_1_ACCEPTANCE.md).
 
-The latest published release, v0.1.0, is an early source-only prerelease. Build a
-matched phone/watch pair locally. WristPrompt is not affiliated with OpenAI.
+Use the [release page](https://github.com/grassified/WristPrompt/releases/tag/v0.1.1)
+for publication status, the verified production-signed matched phone/watch pair
+and SHA256SUMS. Install **both** APKs; retain this release identity for upgrades.
+Existing debug installs use a different certificate: do not uninstall/clear owner
+apps to bypass that mismatch. See [signing](docs/RELEASE_SIGNING.md).
+v0.1.0 remains an immutable source-only prerelease. WristPrompt is not affiliated with OpenAI.
 
 ## Why WristPrompt
 
@@ -77,7 +81,7 @@ or a live paid API-key success claim. TalkBack and battery/runtime profiling rem
 
 - [#1](https://github.com/grassified/WristPrompt/issues/1) and
   [#32](https://github.com/grassified/WristPrompt/issues/32): new table/thumbnail UX
-  awaits focused owner physical acceptance; automated/emulator checks pass.
+  has deferred, non-blocking owner physical acceptance; automated/emulator checks pass.
 - [#11](https://github.com/grassified/WristPrompt/issues/11): live API-key image generation
   owner verification is blocked because no owner API key is available. ChatGPT-plan
   image generation is unsupported by design; optional generation does not gate core readiness.
@@ -90,7 +94,7 @@ or a live paid API-key success claim. TalkBack and battery/runtime profiling rem
 
 Use full JDK 17, SDK Platform `android-37.0`, Build Tools `36.0.0` and the included
 Gradle wrapper. Minimum SDK: Wear 30, phone 26; compile / target SDK: 37 / 36.
-Both apps use `io.github.grassified.wristprompt`, candidate version `0.1.1` / code `2`.
+Both apps use `io.github.grassified.wristprompt`, version `0.1.1` / code `2`.
 
 ```sh
 export JAVA_HOME="/path/to/jdk17"

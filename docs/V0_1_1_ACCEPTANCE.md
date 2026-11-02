@@ -2,7 +2,10 @@
 
 Owner update, 2026-11-02: physical testing is unavailable now. Both focused
 checklists below are **DEFERRED / NOT TESTED**, not FAIL or PASS. #1 and #32 remain
-open; publication waits for the owner results.
+open. The owner subsequently explicitly made these checks NON-BLOCKING for
+v0.1.1 publication. #1/#32 are VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR,
+but NOT YET VERIFIED PHYSICALLY on the owner Galaxy Watch 7. The checklist
+remains required to close the issues; no physical PASS is implied.
 
 ## #1 — structured Wear tables
 

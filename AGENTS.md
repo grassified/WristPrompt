@@ -1,14 +1,17 @@
 # WristPrompt engineering rules
 
-**2026-11-02 — v0.1.1 candidate: OWNER ACCEPTANCE / SIGNING PENDING.**
+**2026-11-02 — v0.1.1: PHYSICAL ACCEPTANCE DEFERRED / NON-BLOCKING.**
 #1 labelled table records and #32 conversation-owned transcript thumbnails are
-merged with automated/emulator evidence. Both issues remain open for focused
-Galaxy Watch 7 acceptance. CI is merged and passed on GitHub. Production signing
-and distribution are prepared, but no permanent key, tag or v0.1.1 release exists.
-Optional #11 remains blocked by the absent owner API key and does not block this
-release. See [candidate acceptance](docs/V0_1_1_ACCEPTANCE.md),
+VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR, but NOT YET VERIFIED PHYSICALLY
+on the owner Galaxy Watch 7. Both issues remain OPEN. The owner explicitly waived
+these physical checks as v0.1.1 publication blockers, confirmed production-key
+backup/recovery and authorized signed prerelease publication after all remaining
+non-physical gates pass. CI is merged and passed on GitHub. Optional #11 remains
+OPEN / blocked by the absent owner API key and does not block this release.
+See [candidate acceptance](docs/V0_1_1_ACCEPTANCE.md),
 [signing checkpoint](docs/RELEASE_SIGNING.md) and [v0.2.0 plan](docs/ROADMAP_v0.2.0.md).
-The latest published version is the v0.1.0 source-only prerelease.
+The [GitHub releases](https://github.com/grassified/WristPrompt/releases) record
+publication status and verified matched production APKs. v0.1.0 stays immutable.
 
 
 ## Contribution branch rules
@@ -176,7 +179,7 @@ untested TalkBack remain documented. D6-A–D implementation/nonphysical accepta
 is merged on `main` (PR #21).
 D7-A–F and D7-H implementation is merged (PRs #22/#23/#25/#26/#27/#28/#30).
 Owner core physical acceptance is complete for v0.1.0. The v0.1.1 candidate
-implements #1/#32, with focused owner physical acceptance still pending; optional
+implements #1/#32, with focused owner physical acceptance deferred/non-blocking; optional
 #11 remains non-blocking. Live paid API-key checks remain unverified.
 See [docs/D7_G_ACCEPTANCE.md](docs/D7_G_ACCEPTANCE.md) for the integrated gate.
 Check [docs/CODEX_HANDOFF.md](docs/CODEX_HANDOFF.md),

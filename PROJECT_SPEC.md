@@ -1,4 +1,4 @@
-# WristPrompt v0.1.1 candidate
+# WristPrompt v0.1.1
 
 Your key. Your model. Your watch.
 
@@ -48,7 +48,9 @@ Supported Markdown tables must retain column/value relationships as ordered nati
 stacked records, with exact readable fallback for unsupported input. Completed
 user-image thumbnails must use conversation-owned files and restore safely;
 unavailable copies never fall back to library/remote content or trigger inference.
-Focused owner physical acceptance remains required for #1/#32. Distribution needs
+Owner policy on 2026-11-02 defers focused physical acceptance for #1/#32 as
+non-blocking for v0.1.1; both issues stay OPEN and physically unverified.
+Automated/emulator evidence does not establish owner-device behavior. Distribution needs
 matched production signing and verified artifacts; see
 [signing checkpoint](docs/RELEASE_SIGNING.md). No v0.2.0 provider work ships here.
 
