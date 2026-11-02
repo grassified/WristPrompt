@@ -91,3 +91,9 @@ fabricate owner results or start D6 while waiting.
 For documentation/license/ignore-only edits, run repository hygiene, secret/privacy,
 license, links and whitespace checks. Do not rerun 459 tests and 77 emulator fixtures
 merely to validate prose. Broaden validation if production/build behavior changes.
+
+## GitHub Actions
+
+[CI](CI.md) runs the automated baseline on PRs and main without owner credentials
+or production signing. Run `python3 tools/check_markdown_links.py` locally for the
+same local-target check. Inspect the actual workflow result before merging.
