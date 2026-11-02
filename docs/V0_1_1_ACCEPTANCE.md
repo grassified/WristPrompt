@@ -1,5 +1,9 @@
 # v0.1.1 focused acceptance
 
+Owner update, 2026-11-02: physical testing is unavailable now. Both focused
+checklists below are **DEFERRED / NOT TESTED**, not FAIL or PASS. #1 and #32 remain
+open; publication waits for the owner results.
+
 ## #1 — structured Wear tables
 
 The v0.1.0 owner observation reproduced absent visible structure with a readable

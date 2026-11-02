@@ -30,7 +30,7 @@ It does not block v0.1.1. No v0.2.0 feature implementation or new provider exist
 ## Final automated gate
 
 VERIFIED AUTOMATICALLY on implementation candidate
-`7790001b80036f3814a207a787f066c1e42d9b16`, using documented full JDK 17 / SDK 37 /
+`b7cf8aed1bebcb67374a29eb1ae1f9ab0a799999`, using documented full JDK 17 / SDK 37 /
 Build Tools 36.0.0 and preserved development signing:
 
 ```sh
@@ -41,7 +41,7 @@ python3 tools/check_markdown_links.py
 git diff --check
 ```
 
-- Gradle BUILD SUCCESSFUL, 2m 44s; 198 tasks (196 executed, two up-to-date).
+- Gradle BUILD SUCCESSFUL, 2m 50s; 198 tasks (196 executed, two up-to-date).
 - Wear **622 tests / 72 suites**; mobile **98 / 17**; zero failures/errors/skips.
 - Both debug/release builds and both lints PASS. Wear zero errors / 14 warnings;
   mobile zero errors / four warnings. Warnings remain dependency/version notices,
@@ -88,7 +88,7 @@ provider, paired transfer or physical result is inferred.
 
 ### Local test artifacts (not release downloads)
 
-The following artifacts were built from candidate 7790001. Its 0.1.1 / code 2
+The following artifacts were built from candidate b7cf8ae. Its 0.1.1 / code 2
 debug pair is compatible with existing development installs;
 do not uninstall/clear owner apps. Public DEVELOPMENT certificate SHA-256:
 `fd8491b6238368a04d58bd0653c35ff54a3a17fc9b31e53a6af7110579d37061`.
@@ -96,9 +96,9 @@ do not uninstall/clear owner apps. Public DEVELOPMENT certificate SHA-256:
 | Local file | SHA-256 | Classification |
 | --- | --- | --- |
 | `mobile-debug.apk` | `38b7af05c27c76d492ec8c0a654961a4640a86af1f9bc78a7051891a42e2df7a` | Development testing only |
-| `mobile-release-unsigned.apk` | `1ddfd5de41c5533aa17ccb1a7ddbeff9c11ea76a8e7a098eba9397c64ba35b36` | Unsigned validation only |
+| `mobile-release-unsigned.apk` | `2df832e393d424a5dd33533120da84eac54c46247e32c74bf6c8b458bb07d518` | Unsigned validation only |
 | `wear-debug.apk` | `278b9e2985eb19fa24c96ca121cfe5020091bebb1f6350306098ed222ee044ef` | Development testing only |
-| `wear-release-unsigned.apk` | `fa350839e3bca8b531da79932c420aaba41b933d029564b891dbca29ffacc716` | Unsigned validation only |
+| `wear-release-unsigned.apk` | `c0e129879dd50d47346af3da48c77450095390dba0d650ba331d3d58d91b5ce2` | Unsigned validation only |
 
 
 ## Signing and distribution
@@ -112,7 +112,11 @@ signing caches; only verified APKs/checksums reach publication. APKs bundle
 project/upstream notices and exact-tag Corresponding Source/build references.
 
 Production key created: **NO**. Production certificate SHA-256: **NOT AVAILABLE**.
-GitHub signing environment/secrets/public fingerprint are not configured. No
+Owner approved a new permanent identity on 2026-11-02; local creation, password-
+manager recovery and independent secure backup confirmation remain pending.
+The `production-release` GitHub environment has required owner review, no admin
+bypass and deployment policies for branch `main` / tags `v*`, verified by API
+readback. Signing secrets and the public certificate variable remain absent. No
 production signatures, matching production pair, distribution APK hashes,
 downloadable assets, release URL, v0.1.1 tag SHA or prerelease status are claimed.
 Prepared target status is early-access **prerelease**, subject to actual publication.
@@ -126,11 +130,12 @@ Expected future assets (not published):
 ## Remaining actions
 
 1. Observe green CI on the final release-PR head; the complete clean local gate is PASS.
-2. Obtain focused owner Galaxy Watch 7 table/thumbnail acceptance plus the short
-   regression sanity check; only then close #1/#32 and record physical results.
-3. Confirm whether an owner-held production key exists elsewhere; otherwise obtain
-   explicit approval for the permanent identity and owner-controlled password/
-   backup recovery. Do not create it silently or reuse the development key.
+2. Owner reports physical testing is unavailable now: focused Galaxy Watch 7
+   table/thumbnail acceptance and the short regression sanity check are DEFERRED /
+   NOT TESTED. Only actual passing results can close #1/#32.
+3. Complete the already-approved permanent identity creation locally, enter/save
+   passwords outside chat and confirm independent secure backup/recovery. Verify
+   the actual public certificate; do not reuse the development key.
 4. Protect/configure signing, verify a real matched production pair, finalize user
    notes/audit, merge the release PR, verify main, annotate the exact main commit
    as v0.1.1, and publish/verify the prerelease. Preserve owner development installs.
@@ -162,6 +167,13 @@ user work was overwritten. Detailed changed-file scope is available in PRs
 Final review tightened the release verifier to match the exact repository/tag URL
 rather than a prefix (wrong-domain and v0.1.10/v0.1.1 negatives are tested), and
 corrected the architecture guide's stale pre-persistence process-death sentence.
-Focused Python verification remains 51/51. A complete clean gate and hosted check
-are required again on that final PR head; their current results are reported in
-PR #37 without rewriting historical evidence or claiming owner acceptance.
+Focused Python verification remains 51/51. The complete clean gate was rerun on
+b7cf8ae and passed. Subsequent changes only record owner deferral/signing approval
+and environment protection; focused documentation checks apply locally. The final
+head still requires green hosted CI, recorded in PR #37 without claiming owner
+acceptance.
+
+Exact hosted job: `validate` / **Android and repository checks**. It runs both-app
+unit tests, debug/release assemblies and debug lint, Python tools, debug scenario
+isolation, local Markdown targets and range whitespace. Only test/lint reports
+are uploaded. The production signing/publication workflow is prepared, not run.

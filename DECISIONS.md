@@ -1437,9 +1437,11 @@ configuration fails closed. Both modules consume one environment identity. A
 separate tag/manual workflow reruns the gate, signs without caches, checks an
 approved public certificate and publishes only a verified matched pair/checksums
 through a draft. Upstream notices are embedded with exact-tag source references.
-No production identity has been created; owner signing/backup/password-manager
-approval and focused physical acceptance are pending. No tag/publication or
-source-only fallback is authorized ahead of those gates. See
+The owner approved new production-key creation on 2026-11-02; local password
+entry, secure backup/recovery confirmation and key creation remain unconfirmed.
+The protected GitHub release environment is configured without signing secrets.
+Focused physical acceptance is deferred because the owner cannot test now. No
+tag/publication or source-only fallback is authorized ahead of those gates. See
 [signing](docs/RELEASE_SIGNING.md) and [candidate acceptance](docs/V0_1_1_ACCEPTANCE.md).
 
 [The v0.2.0 roadmap](docs/ROADMAP_v0.2.0.md) recommends a provider/credential/replay

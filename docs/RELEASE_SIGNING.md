@@ -1,9 +1,10 @@
 # Release signing and distribution
 
-Status for v0.1.1: **BLOCKED ON OWNER SIGNING CHECKPOINT**. No permanent production
-identity has been created or found in the repository configuration, GitHub secret
-names/environments, or known local signing locations. Those locations contain
-only development keys. An owner-held key elsewhere has not been ruled out.
+Status for v0.1.1: **OWNER LOCAL SIGNING STEPS PENDING**. On 2026-11-02 the
+owner explicitly approved a new permanent production identity and committed to
+enter/save passwords and confirm a secure backup locally. Creation has not yet
+been confirmed; no production certificate is available. Known local signing
+locations contained only development keys at inspection.
 Never reuse the owner debug key as a public release key.
 
 ## Identity and recovery checkpoint
@@ -81,11 +82,16 @@ matched APK pair and SHA256SUMS. Known owner debug identity and Android Debug
 certificates are rejected. A synthetic temporary key can exercise this mechanism;
 it is never a production identity or distributable owner release.
 
-## GitHub configuration — owner action after checkpoint
+## GitHub configuration — secrets pending owner checkpoint
 
-Create the `production-release` environment with required owner review and branch/
-tag restrictions appropriate to main and protected release tags. Keep signing
-secrets confined to that environment, unavailable to PR validation. Add:
+The `production-release` environment was created and read back on 2026-11-02:
+required reviewer `grassified`, administrator bypass disabled, allowed branch
+`main` and tag pattern `v*`. Self-review is allowed so the sole owner can explicitly
+approve their own release run. These deployment restrictions do not create a
+repository tag-protection rule; the workflow separately checks exact annotated
+tag/main identity. No signing secrets or public fingerprint are configured yet.
+Keep signing secrets confined to this environment, unavailable to PR validation.
+After the local identity/backup checkpoint, add:
 
 | Environment secret | Contents |
 | --- | --- |
