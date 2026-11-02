@@ -31,7 +31,9 @@ internal fun markdownFixture(scenario: DebugScenario): String? = when (scenario)
         "  very long line ".repeat(120) + "\n" + "  code line\n".repeat(2000) +
         "```\n\nAfter the code."
     DebugScenario.MARKDOWN_OPEN_FENCE, DebugScenario.STREAMING_MARKDOWN_OPEN_SYNTAX -> "# Partial\n\n**unfinished emphasis\n\n```kotlin\n  still typing\n" + "  code\n".repeat(30)
-    DebugScenario.MARKDOWN_TABLE -> "| Model | Speed | Quality |\n|---|---|---|\n| Luna | Fast | Good |\n| Sol | Medium | Better |"
+    DebugScenario.MARKDOWN_TABLE -> "# Distributions\n\n| Distribution | Base | Purpose |\n|:---|:---:|---:|\n" +
+        "| Debian | Independent | Server |\n| Ubuntu | Debian | Desktop |\n| Fedora | Independent | Workstation |\n" +
+        "| Arch | Independent | Customization |\n| Mint | Ubuntu | Desktop |\n\nAfter the table.\n\n```text\ncode remains code\n```"
     DebugScenario.MARKDOWN_TABLE_MALFORMED -> "|Name| |\n|---|---|\n|First|\n|Second|extra|preserved extra cell|"
     DebugScenario.MARKDOWN_TABLE_OVER_LIMIT -> "|Name|Value|\n|---|---|\n" + (1..110).joinToString("\n") { "|Row $it|Value $it|" }
     DebugScenario.MARKDOWN_LINK -> "# Links\n\n[Official label](https://example.invalid/path?q=İstanbul)\n\n[Deceptive example.invalid label](https://different.invalid/destination)"

@@ -117,7 +117,13 @@ internal class MarkdownProjection(
                 while (child != null) {
                     val node = child
                     when (node) {
-                        is TableBlock -> table(node, source, ::add)
+                        is TableBlock -> {
+                            // Reject only this table, not surrounding Markdown. Build atomically
+                            // so a late unsupported cell cannot leave partial duplicate records.
+                            val raw = tableSource(node, source)
+                            val records = try { table(node, raw) } catch (_: Exception) { fallback(raw) }
+                            records.forEach(::add)
+                        }
                         is Heading -> add(inline(node, MarkdownKind.HEADING).copy(level = node.level))
                         is Paragraph -> add(inline(node, if (marker.isNotEmpty()) MarkdownKind.LIST_ITEM else if (quote > 0) MarkdownKind.QUOTE else MarkdownKind.PARAGRAPH)
                             .copy(level = if (marker.isNotEmpty()) depth.coerceAtMost(3) else quote.coerceAtMost(3), marker = marker))
@@ -197,9 +203,16 @@ internal class MarkdownProjection(
         return lines.mapIndexed { index, line -> line + separators.getOrElse(index) { "" } }.joinToString("")
     }
 
-    private fun table(table: TableBlock, source: String, add: (MarkdownBlock) -> Unit) {
+    private fun tableSource(table: TableBlock, source: String): String {
         val spans = table.sourceSpans
-        val raw = spans.joinToString("\n") { source.substring(it.inputIndex, it.inputIndex + it.length) }
+        require(spans.isNotEmpty())
+        val end = spans.last().let { it.inputIndex + it.length }
+        val tail = source.substring(end)
+        return source.substring(spans.first().inputIndex,
+            if (tail.all { it == '\r' || it == '\n' }) source.length else end)
+    }
+
+    private fun table(table: TableBlock, raw: String): List<MarkdownBlock> {
         require(raw.length <= 16_384)
         val rows = mutableListOf<List<MarkdownBlock>>()
         fun collect(node: Node) {
@@ -215,22 +228,39 @@ internal class MarkdownProjection(
             }
         }
         collect(table)
-        require(rows.size <= 101 && rows.first().size <= 8)
-        // GFM drops excess cells. Prefer exact plain source over losing arbitrary content.
+        require(rows.isNotEmpty() && rows.size <= 101 && rows.first().size in 1..8)
         val columns = rows.first().size
-        require(raw.lines().all { line ->
-            val trimmed = line.trim().removePrefix("|").removeSuffix("|")
-            trimmed.split(Regex("(?<!\\\\)\\|")).size <= columns
-        })
-        val headers = rows.first().mapIndexed { index, cell -> cell.inline.text.ifBlank { "Column ${index + 1}" } }
-        if (rows.size == 1) rows.first().forEach(add)
-        for (row in rows.drop(1)) {
-            for (index in headers.indices) {
-                val cell = row.getOrNull(index) ?: MarkdownBlock(MarkdownKind.TABLE_RECORD, AnnotatedString(""))
-                val value = cell.inline.ifEmpty { AnnotatedString("(empty)") }
-                add(cell.copy(inline = if (index == 0) value else AnnotatedString("${headers[index]}: ") + value,
-                    level = if (index == 0) 1 else 0))
+        // GFM pads missing cells but drops excess cells. Count unescaped delimiters
+        // with backslash parity; a pipe after an escaped backslash is a delimiter.
+        require(raw.lines().all { tableCellCount(it) <= columns })
+        val headers = rows.first().mapIndexed { index, cell ->
+            cell.inline.ifEmpty { AnnotatedString("Column ${index + 1}") }.let {
+                if (it.text.isBlank()) AnnotatedString("Column ${index + 1}") else it
             }
         }
+        return buildList {
+            if (rows.size == 1) rows.first().forEach(::add)
+            for (row in rows.drop(1)) {
+                for (index in headers.indices) {
+                    val cell = row[index]
+                    val value = cell.inline.ifEmpty { AnnotatedString("(empty)") }
+                    add(cell.copy(inline = headers[index] + AnnotatedString(": ") + value,
+                        links = (rows.first()[index].links + cell.links).distinct(),
+                        level = if (index == 0) 1 else 0))
+                }
+            }
+        }
+    }
+
+    private fun tableCellCount(line: String): Int {
+        val text = line.trim()
+        val pipes = mutableListOf<Int>()
+        var slashes = 0
+        text.forEachIndexed { index, c ->
+            if (c == '|' && slashes % 2 == 0) pipes.add(index)
+            slashes = if (c == '\\') slashes + 1 else 0
+        }
+        return pipes.size + 1 - (if (pipes.firstOrNull() == 0) 1 else 0) -
+            (if (pipes.lastOrNull() == text.lastIndex) 1 else 0)
     }
 }

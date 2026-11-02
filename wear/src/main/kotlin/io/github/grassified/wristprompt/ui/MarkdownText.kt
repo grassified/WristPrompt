@@ -27,7 +27,7 @@ internal fun MarkdownText(block: MarkdownBlock, inspect: (List<MarkdownLink>) ->
     val size = if (heading && block.level == 1) 19.sp else if (heading && block.level == 2) 17.sp else 16.sp
     Column(Modifier.fillMaxWidth()
         .padding(start = if (block.kind == MarkdownKind.LIST_ITEM) (block.level.coerceIn(1, 3) - 1).times(6).dp else 0.dp,
-            top = if (block.continuation) 0.dp else if (heading) 6.dp else 2.dp)
+            top = if (block.continuation) 0.dp else if (heading) 6.dp else if (block.kind == MarkdownKind.TABLE_RECORD && block.level == 1) 10.dp else 2.dp)
         .then(if (code) Modifier.background(MaterialTheme.colorScheme.surfaceContainerLow).padding(start = 6.dp, end = 6.dp, top = if (block.continuation) 0.dp else 6.dp,
             bottom = if (block.continues) 0.dp else 6.dp) else Modifier)) {
         if (block.language.isNotEmpty()) Text(block.language, style = MaterialTheme.typography.labelSmall)
