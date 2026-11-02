@@ -45,6 +45,8 @@ class InferenceViewModel(
     private var contextModel: String? = null
     private val mutableChat = MutableStateFlow(conversation.state)
     val chat = mutableChat.asStateFlow()
+    private val mutableSentImageScope = MutableStateFlow(0L)
+    val sentImageScope = mutableSentImageScope.asStateFlow()
     private var prepared: PreparedCatalog? = null
     private var operation: Job? = null
     @Volatile private var epoch = 0L
@@ -278,6 +280,7 @@ class InferenceViewModel(
             val latest = entries.firstOrNull()?.let { store.load(it.id, owner) }
             if (run != epoch || ownerScope != owner) return
             if (latest != null) {
+                mutableSentImageScope.value++
                 conversation.restore(latest.snapshot)
                 conversation.readOnly("Stored chat. Load its original model to continue, or start a new chat.")
                 writer = ConversationWriter(store, latest)
@@ -311,6 +314,7 @@ class InferenceViewModel(
                 val entry = store.load(id, owner) ?: throw ConversationStorageException()
                 if (run != epoch || ownerScope != owner || accounts.value != observedAccess) return@launchOperation
                 imageSelection.clear()
+                mutableSentImageScope.value++
                 conversation.restore(entry.snapshot)
                 val current = prepared?.takeIf(::compatible)
                 val canContinue = current != null && entry.route == current.credential.mode.name && entry.model == state.value.selectedSlug
@@ -359,6 +363,21 @@ class InferenceViewModel(
             writer?.entry ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
         }
         return (generatedImages ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)).content(entry.owner, entry.id, reference)
+    }
+    /** Display read only. Recheck ownership after IO so a late result cannot cross chats/accounts. */
+    suspend fun sentThumbnail(message: ChatMessage, id: String, scope: Long = sentImageScope.value): ByteArray {
+        fun owns() = !cleared && scope == sentImageScope.value && message.role == ChatRole.USER && message.status == ChatMessageStatus.COMPLETED &&
+            id in message.attachments && conversation.state.messages.any { it == message }
+        val entry = withContext(Dispatchers.Main.immediate) {
+            if (!owns()) throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+            writer?.entry ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+        }
+        val bytes = (conversationImages ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)).thumbnail(entry.id, id)
+        withContext(Dispatchers.Main.immediate) {
+            if (!owns() || writer?.entry?.id != entry.id || ownerScope != entry.owner || accounts.value != observedAccess)
+                throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+        }
+        return bytes
     }
     private fun send(imageGeneration: Boolean, onStarted: () -> Unit) {
         if (operation?.isActive == true || state.value.busy) return
@@ -507,6 +526,7 @@ class InferenceViewModel(
     }
     private fun publishChat() { mutableChat.value = conversation.state }
     private fun clearChat() {
+        mutableSentImageScope.value++
         imageSelection.clear()
         inputRevision++; contextModel = null; writer = null; conversation.reset()
         mutableState.value = state.value.copy(configuration = conversation.configuration, thinkingNotice = null, thinkingSaving = false)

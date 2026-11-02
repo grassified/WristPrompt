@@ -31,8 +31,10 @@ internal fun chatInputIntent(label: String = "Message"): Intent = Intent("androi
 internal fun ShellListScope.chatItems(presentation: ChatPresentation, proof: InferenceViewModel,
     inspect: (List<MarkdownLink>) -> Unit, openImage: (GeneratedAttachment) -> Unit) {
     for (row in presentation.rows) item(key = row.key, contentType = row.markdown?.kind ?: row.type) {
+        val sent = row.sent
         val generated = row.generated
-        if (generated != null) GeneratedImageRow(proof, generated) { openImage(generated) }
+        if (sent != null) androidx.compose.runtime.key(sent) { SentImageRow(proof, sent) }
+        else if (generated != null) GeneratedImageRow(proof, generated) { openImage(generated) }
         else TranscriptText(row, inspect)
     }
 }

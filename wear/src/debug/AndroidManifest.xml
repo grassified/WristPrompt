@@ -1,5 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <application>
+        <activity android:name=".openai.DebugTranscriptActivity" android:exported="false" android:excludeFromRecents="true" />
         <activity android:name=".openai.DebugGenerationActivity" android:exported="true" android:excludeFromRecents="true" />
         <!-- Explicit synthetic preview only; absent from release builds. -->
         <activity android:name=".openai.DebugScenarioActivity" android:exported="true" android:excludeFromRecents="true" />

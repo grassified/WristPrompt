@@ -9,10 +9,18 @@ internal data class TranscriptRow(
     val key: String, val type: TranscriptType, private val source: String, val exchangeStart: Boolean = false,
     val boundaryNewline: Boolean = false, private val start: Int = 0, private val end: Int = source.length,
     val markdown: MarkdownBlock? = null, val generated: GeneratedAttachment? = null,
+    val sent: SentImageReference? = null,
 ) {
     val text: String get() = if (start == 0 && end == source.length) source else source.substring(start, end)
     val textLength get() = end - start
     override fun toString() = "TranscriptRow(redacted)"
+}
+/** Identity keys reset the decoder on history/account replacement even for equal messages. */
+internal class SentImageReference(val message: ChatMessage, val attachmentId: String, val position: Int) {
+    override fun equals(other: Any?) = other is SentImageReference && message === other.message &&
+        attachmentId == other.attachmentId && position == other.position
+    override fun hashCode() = 31 * System.identityHashCode(message) + position
+    override fun toString() = "SentImageReference(redacted)"
 }
 internal data class ChatPresentation(val rows: List<TranscriptRow> = emptyList(), val stage: ChatStage = ChatStage.EMPTY,
     val recovery: RecoveryAction? = null) {
@@ -74,6 +82,12 @@ internal class PlainTextProjection(private val metrics: PresentationMetrics? = n
                     }
                 }
                 addAll(parts)
+                if (message.role == ChatRole.USER && message.status == ChatMessageStatus.COMPLETED) {
+                    message.attachments.forEachIndexed { index, id ->
+                        add(TranscriptRow("sent-${message.id}-$index", TranscriptType.IMAGE, "",
+                            sent = SentImageReference(message, id, index + 1)))
+                    }
+                }
                 message.generated?.let { add(TranscriptRow("generated-${message.id}", TranscriptType.IMAGE, "", generated = it)) }
                 if (message.role == ChatRole.USER && message.status == ChatMessageStatus.EXCLUDED && message.id != currentAttempt)
                     add(TranscriptRow("excluded-${message.id}", TranscriptType.STATUS, "Unfinished message · not used for future replies."))

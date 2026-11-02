@@ -65,7 +65,7 @@ class ChatViewModelTest {
             picker.cancel()
             assertEquals(2, model.imageSelection.selected.value.size)
             assertTrue(provider.inputs.isEmpty())
-        } finally { picker.viewModelScope.cancel(); directory.deleteRecursively() }
+        } finally { picker.viewModelScope.coroutineContext[Job]!!.cancelAndJoin(); directory.deleteRecursively() }
     }
     @Test fun photoSelectionNeverDispatchesAndCannotBeSilentlySentAsText(): Unit = runTest {
         val provider = Provider(); val model = create(provider); runCurrent()
