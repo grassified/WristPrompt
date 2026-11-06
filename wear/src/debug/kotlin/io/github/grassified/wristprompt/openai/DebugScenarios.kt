@@ -30,7 +30,8 @@ internal enum class DebugScenario {
     MARKDOWN_MALFORMED, MARKDOWN_LONG_URL, ERROR_API_LIMIT, INCOMPLETE_PARTIAL,
     CONVERSATION_LIMIT, SECURE_STORAGE_FAILURE, STREAM_TO_COMPLETED_PLAIN,
     STREAM_TO_COMPLETED_MARKDOWN, STREAM_TO_COMPLETED_LONG, SINGLE_LONG_PARAGRAPH,
-    REAL_MULTI_PARAGRAPH, DIAGNOSTIC_PROOF_CURRENT_ATTEMPT, SAVED_CHATS_HISTORY, PROMPT_PRESETS;
+    REAL_MULTI_PARAGRAPH, DIAGNOSTIC_PROOF_CURRENT_ATTEMPT, SAVED_CHATS_HISTORY, PROMPT_PRESETS,
+    MATH_BASIC, MATH_SCIENCE, MATH_LONG, MATH_MALFORMED, MATH_STREAMING;
     companion object { fun parse(name: String?): DebugScenario? = entries.singleOrNull { it.name == name } }
 }
 
@@ -178,7 +179,7 @@ internal class DebugScenarios(val scenario: DebugScenario) {
             }
             val markdown = markdownFixture(scenario)
             if (markdown != null) {
-                val streamingMarkdown = scenario in setOf(DebugScenario.STREAMING_MARKDOWN, DebugScenario.STREAMING_MARKDOWN_OPEN_SYNTAX)
+                val streamingMarkdown = scenario in setOf(DebugScenario.MATH_STREAMING, DebugScenario.STREAMING_MARKDOWN, DebugScenario.STREAMING_MARKDOWN_OPEN_SYNTAX)
                 if (streamingMarkdown || scenario.name.startsWith("STREAM_TO_COMPLETED_")) {
                     for (chunk in markdown.chunked(if (streamingMarkdown) 8 else 64)) { onEvent(ResponseEvent.Delta(chunk)); delay(100) }
                 } else onEvent(ResponseEvent.Delta(markdown))
@@ -262,7 +263,7 @@ internal class DebugScenarios(val scenario: DebugScenario) {
         if (markdownScenario) {
             vm.draft("Synthetic Markdown request"); vm.send()
             vm.chat.first { chat -> when (scenario) {
-                DebugScenario.STREAMING_MARKDOWN, DebugScenario.STREAMING_MARKDOWN_OPEN_SYNTAX, DebugScenario.STOPPED_MARKDOWN,
+                DebugScenario.MATH_STREAMING, DebugScenario.STREAMING_MARKDOWN, DebugScenario.STREAMING_MARKDOWN_OPEN_SYNTAX, DebugScenario.STOPPED_MARKDOWN,
                 DebugScenario.STREAM_TO_COMPLETED_PLAIN, DebugScenario.STREAM_TO_COMPLETED_MARKDOWN, DebugScenario.STREAM_TO_COMPLETED_LONG -> chat.stage == ChatStage.RECEIVING
                 DebugScenario.INTERRUPTED_MARKDOWN -> chat.stage == ChatStage.FAILED
                 else -> chat.stage == ChatStage.COMPLETED

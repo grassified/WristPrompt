@@ -140,3 +140,25 @@ source/build links. Bounded readers fail rather than silently truncate notices.
 The release verifier requires the bundle. This supplements the existing artifact
 review; it does not broaden the proprietary linking exception or claim third-party
 ownership. Historical source-only audits remain unchanged.
+
+## RaTeX 0.1.15 and bundled KaTeX fonts
+
+Wear uses `io.github.erweixin:ratex-android:0.1.15` for offline math only.
+[RaTeX](https://github.com/erweixin/RaTeX/tree/v0.1.15) is MIT licensed;
+unmodified KaTeX fonts are SIL OFL 1.1, separately from the engine.
+Full engine license, font attribution and OFL text are in [legal/RATEX.txt](legal/RATEX.txt)
+and included in both app distributions. This dependency does not change the base
+GPL-3.0-only license or extend LICENSE_EXCEPTION.md. Native libraries are
+ARM64, ARMv7 and x86_64; there is no 32-bit x86 library.
+
+Extended Unicode mathematical symbols use unmodified
+[Noto Sans Math](https://github.com/google/fonts/tree/main/ofl/notosansmath)
+under SIL OFL 1.1; attribution and full license are in
+[legal/NOTO_MATH.txt](legal/NOTO_MATH.txt), bundled in both apps.
+Greek and Turkish prose retain Android system font fallback.
+
+[Native dependency notices](legal/RATEX_NATIVE.txt) accompany the RaTeX source
+resolution reviewed on 2026-11-06. The upstream v0.1.15 tag has no Cargo.lock;
+this is explicitly not an exact native-binary SBOM. Reviewed license families
+are MIT, Apache-2.0, Unlicense alternatives, Zlib alternatives and Unicode-3.0;
+all are compatible with GPLv3. These notices do not extend the linking exception.

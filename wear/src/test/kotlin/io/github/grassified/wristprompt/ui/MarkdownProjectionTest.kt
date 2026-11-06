@@ -54,7 +54,7 @@ class MarkdownProjectionTest {
         p.project(ChatState(),ChatPresentation()); assertEquals(0,p.metrics.cacheBytes)
     }
     @Test fun streamingSyntaxStaysPlainAndTerminalReconciles() {
-        for (tail in listOf("**open", "[link](", "```\nx", "|a|b|\n|---|")) {
+        for (tail in listOf("\\(\\frac{1}{", "\\[\\sqrt{x", "\$x_i", "\$\$x^2", "**open", "[link](", "```\nx", "|a|b|\n|---|")) {
             val chat=ChatState(listOf(ChatMessage(1,ChatRole.USER,"q")),stage=ChatStage.RECEIVING,partial=tail)
             val plain=PlainTextProjection().project(chat); val rich=p.project(chat,plain)
             assertEquals(plain,rich); assertEquals(0,p.metrics.parses)

@@ -16,8 +16,10 @@ nimbus = "10.10"
 
 commonmark = "0.31.0"
 exifinterface = "1.4.2"
+ratex = "0.1.15"
 
 [libraries]
+ratex = { module = "io.github.erweixin:ratex-android", version.ref = "ratex" }
 exifinterface = { module = "androidx.exifinterface:exifinterface", version.ref = "exifinterface" }
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 activity-compose = { module = "androidx.activity:activity-compose", version.ref = "activity" }

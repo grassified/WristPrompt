@@ -44,5 +44,55 @@ internal fun markdownFixture(scenario: DebugScenario): String? = when (scenario)
     DebugScenario.MARKDOWN_DELIMITER_STRESS, DebugScenario.MARKDOWN_MALFORMED -> "Malformed syntax\n\n" + "* _ [ ` < ".repeat(800)
     DebugScenario.MARKDOWN_LIST_LONG -> (1..200).joinToString("\n") { "$it. **Item $it** with wrapping text for compact watch reading." }
     DebugScenario.MARKDOWN_LONG_URL -> "[Long URL](https://example.invalid/" + "x".repeat(10000) + ")"
+    DebugScenario.MATH_STREAMING -> "# Streaming math\n\n\\[\\frac{1+\\sqrt{5}}{2}\\]\n\n" + "Synthetic streaming text with Unicode αβγ and H₂O. ".repeat(100)
+    DebugScenario.MATH_BASIC -> """
+        # Mathematics
+
+        Half: \(\frac{1}{2}\). Result: ${'$'}${'$'}\boxed{x=2}${'$'}${'$'}
+
+        \[\int_0^1 x^2\,dx=\frac{1}{3}\]
+
+        \[\begin{pmatrix}a&b\\c&d\end{pmatrix}\]
+
+        - Root: \(\sqrt{a^2+b^2}\)
+
+        |Name|Value|
+        |---|---|
+        |Sum|\(\sum_{i=1}^n i\)|
+
+        `\frac{literal}{code}`
+
+        İstanbul, ışık: αβγ Ω ∫ ∑ √ ≠ ≤ ≥ ∞ H₂O x² 𝑥 𝛼
+    """.trimIndent()
+    DebugScenario.MATH_SCIENCE -> """
+        # Science
+
+        \[F=3\,\text{N},\quad E=mc^2\]
+
+        \[\ce{2H2 + O2 -> 2H2O}\]
+
+        \[\pu{9.81 m/s2}\]
+
+        \[\begin{aligned}x&=1\\y&=2\end{aligned}\]
+
+        Turkish: İı Şş Ğğ Çç Öö Üü; Greek αβγ Ω.
+    """.trimIndent()
+    DebugScenario.MATH_LONG -> "# Long equations\n\n\\[" + (1..18).joinToString("+") { "x_{$it}^2" } + "=0\\]\n\n" +
+        (1..30).joinToString("\n\n") { "Formula $it: \\(\\frac{$it}{2}\\)." }
+    DebugScenario.MATH_MALFORMED -> """
+        # Safe fallback
+
+        \(\unknown{x}\)
+
+        \(\frac{a}{b\)
+
+        Price: ${'$'}5 and ${'$'}10.
+
+        ```tex
+        \[\frac{literal}{code}\]
+        ```
+
+        \(\sqrt{
+    """.trimIndent()
     else -> null
 }

@@ -65,6 +65,7 @@ internal class ChatPresentationOwner(private val canonical: StateFlow<ChatState>
     init {
         viewModelScope.launch {
             canonical.collect {
+                if (it.messages.isEmpty()) MathRendering.clear()
                 if (visible) coalescer.accept(it)
                 else if (it.messages.isEmpty()) {
                     coalescer.discard()
@@ -82,5 +83,5 @@ internal class ChatPresentationOwner(private val canonical: StateFlow<ChatState>
             markdown.accept(canonical.value, mutable.value)
         } else { coalescer.pause(); markdown.pause() }
     }
-    override fun onCleared() { markdown.pause(); coalescer.pause(); coalescer.projection.clear() }
+    override fun onCleared() { MathRendering.clear(); markdown.pause(); coalescer.pause(); coalescer.projection.clear() }
 }

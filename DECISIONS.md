@@ -1453,3 +1453,17 @@ physical evidence, authorize debug/unsigned assets or change v0.1.0. See
 [The v0.2.0 roadmap](docs/ROADMAP_v0.2.0.md) recommends a provider/credential/replay
 isolation audit before OpenRouter, then native Anthropic/Gemini. It is planning
 only; no provider implementation, dependency update or license scope change.
+
+## 2026-11-06 — v0.1.2 local math presentation
+
+Select pinned `io.github.erweixin:ratex-android:0.1.15` as a math-only Canvas/JNI
+component; preserve CommonMark, stacked records and the existing streaming worker.
+Offline KaTeX adds a browser/JS surface; Enriched Markdown wraps the same math
+engine in a broader renderer. The exact AAR, ABIs/alignment, native capabilities,
+font/engine licenses, input/raster/cache budgets and measured evidence are in
+[the math decision and acceptance report](docs/V0_1_2_MATH.md). No mathematical
+source is rewritten in persistence/replay. Render failure exposes exact source.
+Native work is serialized off Main and bounded; it cannot be forcibly cancelled
+mid-call. Stop remains independent. Bundle OFL Noto Sans Math for extended math
+planes while retaining system prose fonts. No signing, billing, transport or
+provider changes; no automatic publication or physical PASS.

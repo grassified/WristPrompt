@@ -16,7 +16,9 @@ android {
         targetSdk = 36
         versionCode = 2
         versionName = "0.1.1"
-        testInstrumentationRunner = if (providers.gradleProperty("wristprompt.generationAcceptance").orNull == "true")
+        testInstrumentationRunner = if (providers.gradleProperty("wristprompt.mathAcceptance").orNull == "true")
+            "io.github.grassified.wristprompt.ui.MathRenderingInstrumentation"
+        else if (providers.gradleProperty("wristprompt.generationAcceptance").orNull == "true")
             "io.github.grassified.wristprompt.storage.ImageGenerationInstrumentation"
         else if (providers.gradleProperty("wristprompt.imageInferenceAcceptance").orNull == "true")
             "io.github.grassified.wristprompt.storage.ImageInferenceInstrumentation"
@@ -53,6 +55,7 @@ android {
 
 dependencies {
     implementation(libs.exifinterface)
+    implementation(libs.ratex)
     implementation(libs.commonmark)
     implementation(libs.commonmark.tables)
     implementation(libs.okhttp)

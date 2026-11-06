@@ -46,7 +46,7 @@ private fun TranscriptText(row: TranscriptRow, inspect: (List<MarkdownLink>) -> 
     // A lazy row boundary supplies the final newline's line break. Other whitespace is literal.
     val visible = transcriptDisplayText(row)
     androidx.wear.compose.material3.Text(
-        visible,
+        androidx.compose.runtime.remember(visible) { scientificText(visible) },
         modifier = androidx.compose.ui.Modifier.fillMaxWidth()
             .clearAndSetSemantics {
                 text = AnnotatedString(row.text)

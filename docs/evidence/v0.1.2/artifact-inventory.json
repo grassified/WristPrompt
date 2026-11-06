@@ -1,0 +1,26 @@
+{
+  "wear-debug.apk": {
+    "bytes": 47440870,
+    "sha256": "20acad7741f2e076d205b5d974038bdf59b601f573f9561d39d22b96656e3b4f"
+  },
+  "wear-release-unsigned.apk": {
+    "bytes": 39039241,
+    "sha256": "725c026ef7d487480e15ab986f0ca5ce3b5ae1ae0acb290adef785131bf82714"
+  },
+  "mobile-debug.apk": {
+    "bytes": 15233704,
+    "sha256": "edf467dc7888511c29b9d4e3bc22db967974e8237f264b0bcf023a977b928025"
+  },
+  "mobile-release-unsigned.apk": {
+    "bytes": 10847675,
+    "sha256": "c9094853d31753c0d69ac657331b601474b78c78763ba5706d5a16323203ab58"
+  },
+  "noto_sans_math.ttf": {
+    "bytes": 1015396,
+    "sha256": "3f495fe933c06786e4d5f6d86b8ee70b6753a68ee3b9d87528726de0f6e2c47d"
+  },
+  "wristprompt-ratex.aar": {
+    "bytes": 4149026,
+    "sha256": "b692c2ca41fc40da4b4f5ee8eb8db71ad605bb917c8b720d60f62b2169b0b583"
+  }
+}

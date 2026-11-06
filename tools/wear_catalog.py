@@ -1,5 +1,6 @@
 """Acceptance metadata for the public debug enum; no device operations."""
 CATEGORIES = {
+    'math': ('MATH_BASIC', 'MATH_SCIENCE', 'MATH_LONG', 'MATH_MALFORMED', 'MATH_STREAMING'),
     'presets': ('PROMPT_PRESETS',),
     'history': ('SAVED_CHATS_HISTORY',),
     'remediation': ('STREAM_TO_COMPLETED_PLAIN', 'STREAM_TO_COMPLETED_MARKDOWN', 'STREAM_TO_COMPLETED_LONG', 'SINGLE_LONG_PARAGRAPH', 'REAL_MULTI_PARAGRAPH', 'DIAGNOSTIC_PROOF_CURRENT_ATTEMPT'),
