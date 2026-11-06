@@ -157,3 +157,7 @@ it requires separate owner approval.
 Primary references: [Android signing](https://developer.android.com/studio/publish/app-signing),
 [GitHub secrets](https://docs.github.com/en/actions/how-tos/write-workflows/choose-what-workflows-do/use-secrets),
 and [environment protection](https://docs.github.com/en/actions/how-tos/deploy/configure-and-manage-deployments/manage-environments).
+
+## v0.1.2 authorization — 2026-11-07
+
+Reuse the same permanent approved certificate and protected workflow for 0.1.2 / code 3. Owner explicitly defers Galaxy Watch 7 physical math acceptance as NON-BLOCKING; no physical PASS. [Release audit](RELEASE_AUDIT_v0.1.2.md) requires all non-physical gates, release PR CI/merge, NEW exact-final-main CI, immutable annotated tag and verified matched production assets before prerelease publication. GitHub environment approval must still be obtained when required; do not bypass it. #40 tracks math acceptance; #1/#32/#11 remain open. v0.1.0/v0.1.1 remain immutable.

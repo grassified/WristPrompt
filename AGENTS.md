@@ -1,5 +1,7 @@
 # WristPrompt engineering rules
 
+**EARLY ACCESS — PHYSICAL MATH ACCEPTANCE DEFERRED / NON-BLOCKING.** Owner authorizes this production-signed prerelease after all required non-physical gates pass. Galaxy Watch 7 ARM64 runtime, TalkBack, physical clipboard paste and sustained battery/performance remain NOT VERIFIED PHYSICALLY. [Issue #40](https://github.com/grassified/WristPrompt/issues/40) tracks acceptance; #1, #32 and #11 remain open. See [v0.1.2 audit](docs/RELEASE_AUDIT_v0.1.2.md). Historical evidence below remains unchanged.
+
 **2026-11-02 — v0.1.1: PHYSICAL ACCEPTANCE DEFERRED / NON-BLOCKING.**
 #1 labelled table records and #32 conversation-owned transcript thumbnails are
 VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR, but NOT YET VERIFIED PHYSICALLY

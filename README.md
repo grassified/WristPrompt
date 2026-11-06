@@ -1,5 +1,7 @@
 # WristPrompt
 
+**EARLY ACCESS — PHYSICAL MATH ACCEPTANCE DEFERRED / NON-BLOCKING.** Owner authorizes this production-signed prerelease after all required non-physical gates pass. Galaxy Watch 7 ARM64 runtime, TalkBack, physical clipboard paste and sustained battery/performance remain NOT VERIFIED PHYSICALLY. [Issue #40](https://github.com/grassified/WristPrompt/issues/40) tracks acceptance; #1, #32 and #11 remain open. See [v0.1.2 audit](docs/RELEASE_AUDIT_v0.1.2.md). Historical evidence below remains unchanged.
+
 Your key. Your model. Your watch.
 
 [![CI](https://github.com/grassified/WristPrompt/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/grassified/WristPrompt/actions/workflows/ci.yml)
@@ -10,12 +12,14 @@ A native, local-first OpenAI client for Wear OS with an Android setup companion.
 Continue with ChatGPT or choose an explicit API-key billing path. After setup,
 inference runs directly on the watch, with no WristPrompt account or backend.
 
-**v0.1.1 — early-access prerelease.** Structured Wear tables and completed-transcript
+**v0.1.2 — early-access prerelease.** Offline Unicode/LaTeX math supports fractions, roots, integrals, matrices, boxed results, units and supported chemistry. Long equations scroll horizontally; unsupported formulas retain exact readable source. Code and currency stay protected. See [capabilities and limitations](docs/RELEASE_NOTES_v0.1.2.md). Universal Wear APK growth is approximately 10 MB from the native engine/fonts.
+
+**Historical v0.1.1 baseline.** Structured Wear tables and completed-transcript
 photo thumbnails are VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR, but NOT YET
 VERIFIED PHYSICALLY on the owner Galaxy Watch 7. The owner explicitly deferred
 those checks as non-blocking; #1/#32 remain open. See [acceptance](docs/V0_1_1_ACCEPTANCE.md).
 
-Use the [release page](https://github.com/grassified/WristPrompt/releases/tag/v0.1.1)
+Use the [release page](https://github.com/grassified/WristPrompt/releases/tag/v0.1.2)
 for publication status, the verified production-signed matched phone/watch pair
 and SHA256SUMS. Install **both** APKs; retain this release identity for upgrades.
 Existing debug installs use a different certificate: do not uninstall/clear owner
@@ -45,6 +49,7 @@ context go to OpenAI. Google Play services may relay phone/watch Data Layer traf
 - API-key image-generation implementation and fullscreen zoom/pan viewer. Automated/emulator
   acceptance passed; owner live API-key verification is blocked by unavailable credentials.
 - Native Markdown with labelled stacked table records and exact readable fallback.
+- Offline inline/display LaTeX and extended Unicode math with exact-source/copy controls.
 - Completed-user-message thumbnails from private conversation-owned photos.
 - Horizontally scrollable code, rotary navigation and round-screen UI.
 - Account, Settings and sanitized Diagnostics; no analytics or developer-operated cloud sync.
