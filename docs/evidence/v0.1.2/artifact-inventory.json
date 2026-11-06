@@ -1,11 +1,11 @@
 {
   "wear-debug.apk": {
-    "bytes": 47440870,
-    "sha256": "20acad7741f2e076d205b5d974038bdf59b601f573f9561d39d22b96656e3b4f"
+    "bytes": 48106688,
+    "sha256": "292002f177267c4826bef9efa0d872c2a2c7c87370653315b43331ae601b2210"
   },
   "wear-release-unsigned.apk": {
     "bytes": 39039241,
-    "sha256": "725c026ef7d487480e15ab986f0ca5ce3b5ae1ae0acb290adef785131bf82714"
+    "sha256": "e04f08f46de316038851271828f65bf31de229db2ca65369538cb069e9586244"
   },
   "mobile-debug.apk": {
     "bytes": 15233704,

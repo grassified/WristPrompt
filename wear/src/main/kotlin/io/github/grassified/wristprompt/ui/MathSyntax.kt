@@ -34,17 +34,27 @@ internal class MathParserFactory(private val original: String) : InlineContentPa
         }
         val close = when (open) { "\\(" -> "\\)"; "\\[" -> "\\]"; else -> open }
         var escaped = false
+        var codeTicks = 0
+        var containsCode = false
         var count = 0
         while (scanner.hasNext() && count++ <= MarkdownProjection.MAX_SOURCE) {
             val before = scanner.position()
-            if (!escaped && scanner.next(close)) {
+            if (!escaped && scanner.peek() == '`') {
+                // A dollar opener must never steal a closer from an inline code span.
+                if (dollar) { scanner.setPosition(start); return@InlineContentParser ParsedInline.none() }
+                containsCode = true
+                val ticks = scanner.matchMultiple('`')
+                if (codeTicks == 0) codeTicks = ticks else if (codeTicks == ticks) codeTicks = 0
+                continue
+            }
+            if (codeTicks == 0 && !escaped && scanner.next(close)) {
                 val lines = scanner.getSource(start, scanner.position())
                 val raw = exact(lines)
                 val body = raw.substring(open.length, raw.length - close.length)
                 val currency = open == "$" && (body.lastOrNull()?.isWhitespace() != false ||
                     body.all { it.isDigit() || it in "., +-" } || Character.isDigit(scanner.peekCodePoint()))
                 if (currency) { scanner.setPosition(start); return@InlineContentParser ParsedInline.none() }
-                return@InlineContentParser ParsedInline.of(MathNode(raw, display), scanner.position())
+                return@InlineContentParser ParsedInline.of(if (containsCode) Text(raw) else MathNode(raw, display), scanner.position())
             }
             scanner.setPosition(before)
             val c = scanner.peek()

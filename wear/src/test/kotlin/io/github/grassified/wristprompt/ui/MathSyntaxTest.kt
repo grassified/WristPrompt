@@ -27,6 +27,16 @@ class MathSyntaxTest {
     @Test fun codeNeverBecomesMath() {
         assertTrue(formulas("`\\(\\frac{1}{2}\\)` and `\$x\$`\n\n```tex\n\\[x^2\\]\n\$\$x\$\$\n```\n\n    \\(x\\)").isEmpty())
     }
+    @Test fun mathDelimitersCannotConsumeInlineCode() {
+        val currency = "Price \$5 with `\$\\frac{1}{2}\$` and `x\$` remains prose."
+        assertTrue(formulas(currency).isEmpty())
+        val b = blocks(currency).single()
+        assertTrue(b.inline.text.contains("\\frac{1}{2}"))
+        assertEquals(2, b.inline.spanStyles.count { it.item.fontFamily == androidx.compose.ui.text.font.FontFamily.Monospace })
+        val explicit = "\\(x + `\$\\frac{1}{2}\$ and \\)` + y\\)"
+        assertTrue(formulas(explicit).isEmpty())
+        assertEquals(explicit, blocks(explicit).single().inline.text)
+    }
     @Test fun currencyAndEscapesStayOrdinary() {
         for (source in listOf("Cost \$5 and \$10", "\$20\$", "US\$5", "\\\$x\\\$", "\$ x \$", "\$5.00\$", "\\\\(x\\\\)"))
             assertTrue(source, formulas(source).isEmpty())

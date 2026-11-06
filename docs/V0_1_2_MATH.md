@@ -40,7 +40,9 @@ the emulator; this is not a claim that every Unicode character is supported.
 
 CommonMark remains the Markdown parser. A custom inline parser recognizes
 `\(...\)`, `\[...\]`, `$...$`, and `$$...$$` before Markdown consumes LaTeX escapes.
-Code spans, fences and indented code remain literal. Formula annotations retain
+Code spans, fences and indented code remain literal. Dollar candidates stop at
+inline-code boundaries; ambiguous explicit delimiters crossing code use whole-source
+fallback rather than consuming code as LaTeX. Formula annotations retain
 original delimited source (including CR/LF), survive list/table-cell projection,
 and avoid being split across the existing 2,048-unit rich segments. Canonical
 chat, durable transcripts and Responses replay are never rewritten.
@@ -115,7 +117,7 @@ git diff --check
 
 ## Evidence and remaining acceptance
 
-VERIFIED AUTOMATICALLY (2026-11-06): 634 Wear tests / 73 suites and 98 mobile
+VERIFIED AUTOMATICALLY (2026-11-06): 635 Wear tests / 73 suites and 98 mobile
 tests / 17 suites, zero failures/errors; 51 Python tooling tests; both app debug
 and unsigned release builds; both debug lints (zero errors, 15 Wear / 4 mobile
 warnings, including one new platform-API/KTX style suggestion). Scenario isolation,
@@ -132,10 +134,12 @@ total cache hits across 24 cases (includes initialization; not per-frame latency
 VERIFIED ON EMULATOR: Wear OS 6 / API 36 x86_64, SwiftShader debug environment,
 480×480 display override / 320 dpi; original AVD profile is 454×454. Four completed
 fixtures were scrolled/captured at font scales 1.0 and 2.0. Images below show actual
-native output, literal code, currency and fallback. Individual scenario readiness
+native output, literal code, currency and fallback. Rendering/interaction captures were made at implementation commit `e03ea3e`;
+the subsequent code-span boundary guard is unit-verified and leaves that native
+rendering component unchanged. Individual scenario readiness
 is distinguished from the separately observed rendering/interaction checks.
 
-Universal APK sizes: Wear debug 47,440,870 bytes; Wear unsigned release 39,039,241
+Universal APK sizes: Wear debug 48,106,688 bytes; Wear unsigned release 39,039,241
 bytes. Initial existing v0.1.1 local APKs were 37,343,053 / 28,999,465 bytes: about
 10.1 MB extra per universal APK, chiefly all three native ABIs plus bundled fonts
 and notices. This is an observed local-file comparison, not a controlled release
