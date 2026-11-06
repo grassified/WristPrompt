@@ -1,0 +1,99 @@
+{
+  "large-math_malformed-memory": {
+    "TOTAL PSS:": 103285,
+    "Native Heap": 16686,
+    "Dalvik Heap": 12323
+  },
+  "large-math_long-memory": {
+    "TOTAL PSS:": 98376,
+    "Native Heap": 17318,
+    "Dalvik Heap": 6857
+  },
+  "large-math_science-memory": {
+    "TOTAL PSS:": 98578,
+    "Native Heap": 17310,
+    "Dalvik Heap": 7791
+  },
+  "large-math_basic-memory": {
+    "TOTAL PSS:": 98574,
+    "Native Heap": 17054,
+    "Dalvik Heap": 8175
+  },
+  "normal-math_malformed-memory": {
+    "TOTAL PSS:": 94955,
+    "Native Heap": 15242,
+    "Dalvik Heap": 7007
+  },
+  "normal-math_long-memory": {
+    "TOTAL PSS:": 96459,
+    "Native Heap": 15510,
+    "Dalvik Heap": 8523
+  },
+  "normal-math_science-memory": {
+    "TOTAL PSS:": 95056,
+    "Native Heap": 15070,
+    "Dalvik Heap": 7831
+  },
+  "normal-math_basic-memory": {
+    "TOTAL PSS:": 91583,
+    "Native Heap": 11766,
+    "Dalvik Heap": 9416
+  },
+  "large-frames": [
+    "Total frames rendered: 4845",
+    "Janky frames: 206 (4.25%)",
+    "Janky frames (legacy): 2027 (41.84%)",
+    "50th percentile: 16ms",
+    "90th percentile: 29ms",
+    "95th percentile: 32ms",
+    "99th percentile: 48ms",
+    "Number Frame deadline missed: 206",
+    "Number Frame deadline missed (legacy): 128",
+    "50th gpu percentile: 9ms",
+    "90th gpu percentile: 19ms",
+    "95th gpu percentile: 21ms",
+    "99th gpu percentile: 4950ms"
+  ],
+  "normal-frames": [
+    "Total frames rendered: 2429",
+    "Janky frames: 125 (5.15%)",
+    "Janky frames (legacy): 1458 (60.02%)",
+    "50th percentile: 19ms",
+    "90th percentile: 32ms",
+    "95th percentile: 32ms",
+    "99th percentile: 65ms",
+    "Number Frame deadline missed: 125",
+    "Number Frame deadline missed (legacy): 90",
+    "50th gpu percentile: 9ms",
+    "90th gpu percentile: 19ms",
+    "95th gpu percentile: 21ms",
+    "99th gpu percentile: 4950ms"
+  ],
+  "context": {
+    "device": "WristPrompt_Watch7 x86_64, Wear OS 6 / API 36",
+    "display": "480x480 override; original AVD 454x454, density 320",
+    "gpu": "SwiftShader; debug APK",
+    "sampling": "sequential synthetic fixture navigation, 9 touch scrolls each; frame stats cumulative and include setup/UI automation",
+    "caveat": "large-long sample preceded the raster area adjustment; final long-equation sample recorded separately. Not a controlled baseline comparison, release benchmark or physical evidence."
+  },
+  "native_gate": {
+    "cases": 24,
+    "pixel_sizes": [
+      32,
+      64
+    ],
+    "cold_total_ms": 405,
+    "warm_total_ms": 10,
+    "result": "PASS"
+  },
+  "wristprompt-math-final-large-memory": {
+    "TOTAL PSS:": 93933,
+    "Native Heap": 14058,
+    "Dalvik Heap": 8274
+  },
+  "wristprompt-math-final-normal-memory": {
+    "TOTAL PSS:": 89350,
+    "Native Heap": 12731,
+    "Dalvik Heap": 5938
+  }
+}

@@ -6,7 +6,7 @@ val legalAssets = objects.directoryProperty().value(layout.buildDirectory.dir("g
 extra["wristpromptDistributionAssets"] = legalAssets
 val runtimeArtifacts = providers.provider { configurations.getByName("releaseRuntimeClasspath") }
 val appVersion = extra["wristpromptVersionName"] as String
-val legalDocuments = listOf("LICENSE", "LICENSE_EXCEPTION.md", "THIRD_PARTY_NOTICES.md", "legal/APACHE-2.0.txt")
+val legalDocuments = listOf("LICENSE", "LICENSE_EXCEPTION.md", "THIRD_PARTY_NOTICES.md", "legal/APACHE-2.0.txt", "legal/RATEX.txt", "legal/NOTO_MATH.txt", "legal/RATEX_NATIVE.txt")
 val generateDistributionNotices = tasks.register("generateDistributionNotices") {
     inputs.files(runtimeArtifacts)
     inputs.property("appVersion", appVersion)

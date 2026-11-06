@@ -37,7 +37,8 @@ internal class MarkdownProjection(
     val metrics: MarkdownMetrics = MarkdownMetrics(),
     private val parse: (String) -> Node = { text -> Parser.builder()
         .maxOpenBlockParsers(16).maxInlineNesting(16)
-        .includeSourceSpans(IncludeSourceSpans.BLOCKS)
+        .customInlineContentParserFactory(MathParserFactory(text))
+        .includeSourceSpans(IncludeSourceSpans.BLOCKS_AND_INLINES)
         .extensions(listOf(TablesExtension.builder().maxCells(808).build())).build().parse(text) },
 ) {
     companion object {
@@ -48,6 +49,7 @@ internal class MarkdownProjection(
     }
     private data class Cached(val source: String, val blocks: List<MarkdownBlock>, val bytes: Int)
     private val cache = linkedMapOf<Long, Cached>()
+    private var formulaCount = 0
     fun clear() { cache.clear(); metrics.cacheBytes = 0 }
     fun project(chat: ChatState, base: ChatPresentation): ChatPresentation {
         val ids = chat.messages.mapTo(mutableSetOf()) { it.id } + listOfNotNull(chat.messages.lastOrNull()?.id?.let { -it })
@@ -79,7 +81,7 @@ internal class MarkdownProjection(
         val old = cache[id]
         val blocks = if (old?.source === source) old.blocks else {
             val next = blocks(source)
-            val bytes = source.length * 2 + next.sumOf { 128 + it.inline.length * 2 + it.links.sumOf { link -> 64 + link.destination.length * 2 } }
+            val bytes = source.length * 2 + next.sumOf { 128 + it.inline.length * 2 + it.inline.spanStyles.size * 64 + it.inline.getStringAnnotations(MATH_TAG, 0, it.inline.length).size * 64 + it.links.sumOf { link -> 64 + link.destination.length * 2 } }
             if (bytes <= CACHE_BYTES) {
                 remove(id)
                 while (metrics.cacheBytes + bytes > CACHE_BYTES && cache.isNotEmpty()) remove(cache.keys.first())
@@ -96,13 +98,17 @@ internal class MarkdownProjection(
         try {
             if (source.length > MAX_SOURCE) return fallback(source)
             metrics.parses++; metrics.chars += source.length
+            formulaCount = 0
             val root = parse(source)
             val result = mutableListOf<MarkdownBlock>()
             fun add(block: MarkdownBlock) {
                 var offset = 0
                 if (block.inline.isEmpty()) result.add(block)
                 while (offset < block.inline.length) {
-                    val end = safeEnd(block.inline.text, offset, minOf(offset + SEGMENT, block.inline.length))
+                    var end = safeEnd(block.inline.text, offset, minOf(offset + SEGMENT, block.inline.length))
+                    block.inline.getStringAnnotations(MATH_TAG, offset, end).firstOrNull { it.start < end && it.end > end }?.let {
+                        if (it.start > offset) end = it.start
+                    }
                     result.add(block.copy(inline = block.inline.subSequence(offset, end), continuation = offset > 0, continues = end < block.inline.length, marker = if (offset == 0) block.marker else "",
                         language = if (offset == 0) block.language else "", links = if (offset == 0) block.links else emptyList()))
                     offset = end
@@ -172,7 +178,13 @@ internal class MarkdownProjection(
                 }
                 if (style != null) out.pushStyle(style)
                 when (child) {
-                    is Text -> out.append(child.literal)
+                    is MathNode -> {
+                        val render = formulaCount++ < MathSafety.MAX_FORMULAS && child.source.length <= MathSafety.MAX_SOURCE + 4
+                        if (render) out.pushStringAnnotation(MATH_TAG, if (child.display) "display" else "inline")
+                        out.append(scientificText(child.source))
+                        if (render) out.pop()
+                    }
+                    is Text -> out.append(scientificText(child.literal))
                     is Code -> out.append(child.literal)
                     is SoftLineBreak, is HardLineBreak -> out.append("\n")
                     is HtmlInline -> out.append(child.literal)

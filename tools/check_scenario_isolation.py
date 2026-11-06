@@ -24,13 +24,13 @@ def check_dependencies():
 def check():
     check_dependencies()
     from wear_scenarios import scenarios
-    markers = ('DebugTranscriptActivity', 'ImageGenerationInstrumentation', 'DebugGenerationActivity', 'GenerationAcceptanceOwner', 'DEBUG_GENERATION', 'debug-generation.txt', 'DebugScenario', 'StreamingPreviewActivity', 'DEBUG_LIFECYCLE',
+    markers = ('DebugTranscriptActivity', 'MathRenderingInstrumentation', 'ImageGenerationInstrumentation', 'DebugGenerationActivity', 'GenerationAcceptanceOwner', 'DEBUG_GENERATION', 'debug-generation.txt', 'DebugScenario', 'StreamingPreviewActivity', 'DEBUG_LIFECYCLE',
                'debug-scenario-ready.txt', 'BuildConfig.DEBUG', *scenarios())
     for source in ('wear/src/main', 'mobile/src/main', 'shared/src/main'):
         for p in (ROOT / source).rglob('*'):
             if p.is_file():
-                content = p.read_text()
-                assert all(marker not in content for marker in markers), p
+                content = p.read_bytes()
+                assert all(marker.encode() not in content for marker in markers), p
     for variant in ('debug', 'release'):
         manifest = ROOT / f'wear/build/intermediates/merged_manifests/{variant}/process{variant.title()}Manifest/AndroidManifest.xml'
         tree = ET.parse(manifest)
@@ -44,6 +44,7 @@ def check():
         apk, = folder.glob('*.apk')
         with zipfile.ZipFile(apk) as archive:
             dex = b''.join(archive.read(name) for name in archive.namelist() if name.endswith('.dex'))
+        assert b'MathRenderingInstrumentation' not in dex, (variant, 'math test runner leaked into app')
         assert b'ImageGenerationInstrumentation' not in dex, (variant, 'test runner leaked into app')
         for marker in (b'DebugTranscriptActivity', b'DebugGenerationActivity', b'GenerationAcceptanceOwner', b'DEBUG_GENERATION', b'debug-generation.txt', b'DebugScenarioActivity', b'DebugScenarios;', b'DebugScenario;', b'ScenarioOwner;',
                        b'debug-scenario-ready.txt', b'DEBUG_LIFECYCLE'):

@@ -35,16 +35,21 @@ internal fun MarkdownText(block: MarkdownBlock, inspect: (List<MarkdownLink>) ->
             if (block.marker.isNotEmpty()) Text(block.marker + " ", style = MaterialTheme.typography.bodyMedium)
             if (block.kind == MarkdownKind.QUOTE) Box(Modifier.padding(end = 6.dp).width(2.dp).height(20.dp)
                 .background(MaterialTheme.colorScheme.primary))
-            Text(block.inline, modifier = Modifier.weight(1f)
+            val style = MaterialTheme.typography.bodyMedium.copy(fontSize = size, lineHeight = 21.sp,
+                fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+                fontFamily = if (code) FontFamily.Monospace else FontFamily.Default)
+            if (!code && block.inline.getStringAnnotations(MATH_TAG, 0, block.inline.length).isNotEmpty()) {
+                MathText(block.inline, style, Modifier.weight(1f).semantics {
+                    if (heading) { heading(); stateDescription = "Heading level ${block.level}" }
+                })
+            } else Text(block.inline, modifier = Modifier.weight(1f)
                 .then(if (code) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
                 .semantics {
                     if (heading) { heading(); stateDescription = "Heading level ${block.level}" }
                     if (code) stateDescription = "Code. Scroll horizontally for long lines."
                 },
                 softWrap = !code,
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = size, lineHeight = 21.sp,
-                    fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-                    fontFamily = if (code) FontFamily.Monospace else FontFamily.Default))
+                style = style)
         }
         if (block.links.isNotEmpty()) {
             TextButton(onClick = { inspect(block.links) }, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {

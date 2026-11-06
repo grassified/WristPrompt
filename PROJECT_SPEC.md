@@ -54,6 +54,15 @@ Automated/emulator evidence does not establish owner-device behavior. Distributi
 matched production signing and verified artifacts; see
 [signing checkpoint](docs/RELEASE_SIGNING.md). No v0.2.0 provider work ships here.
 
+## v0.1.2 rendering candidate
+
+Add local native inline/display LaTeX and extended Unicode mathematical glyphs to
+existing Markdown. Preserve stacked tables, literal code, source meaning, font
+scaling, reader/Latest, rotary and real Stop. Bound native rendering and retain
+exact readable/source-copy fallback. No remote math, WebView, provider changes or
+v0.2.0 work. Acceptance and evidence: [math candidate](docs/V0_1_2_MATH.md).
+Publication remains separately authorized; existing releases/signing stay intact.
+
 ## Runtime responsibilities
 
 | Runtime | Owns |

@@ -1,0 +1,10 @@
+{
+  "normal-horizontal-pan": "PASS: changed equation ink inside its lane",
+  "normal-rotary": "PASS: reader content/bounds changed",
+  "normal-latest": "PASS: explicit Latest reached Formula 30",
+  "large-horizontal-pan": "PASS: changed equation ink inside its lane",
+  "large-rotary": "PASS: reader content/bounds changed",
+  "large-latest": "PASS: explicit Latest reached Formula 30",
+  "source-copy": "PASS: source expanded, Copy formula 1 reached and tapped; exact clipboard paste remains an owner check",
+  "stream-stop": "PASS: synthetic production session reached CANCELLED, busy=false"
+}

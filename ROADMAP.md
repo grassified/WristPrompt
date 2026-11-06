@@ -576,3 +576,11 @@ implemented on the contributor C branch. Automated gates and scoped phone-emulat
 interaction evidence are recorded in docs/D6_C_HISTORY.md. Wear round/max-font/
 rotary and owner physical results remain pending; do not promote phone screenshots
 to Wear or physical acceptance. Next gate: D6-D consolidated persistence acceptance.
+
+## v0.1.2 — focused mathematical rendering (authorized 2026-11-06)
+
+Local Unicode/LaTeX presentation only; RaTeX math component alongside the existing
+CommonMark/Compose renderer. No provider or unrelated v0.2.0 implementation.
+Automated/emulator results and the owner physical checklist live in
+[math candidate acceptance](docs/V0_1_2_MATH.md). Physical acceptance remains
+unverified; no release publication is authorized by this implementation gate.
