@@ -1,5 +1,7 @@
 # Codex handoff
 
+**EARLY ACCESS — PHYSICAL MATH ACCEPTANCE DEFERRED / NON-BLOCKING.** Owner authorizes this production-signed prerelease after all required non-physical gates pass. Galaxy Watch 7 ARM64 runtime, TalkBack, physical clipboard paste and sustained battery/performance remain NOT VERIFIED PHYSICALLY. [Issue #40](https://github.com/grassified/WristPrompt/issues/40) tracks acceptance; #1, #32 and #11 remain open. See [v0.1.2 audit](RELEASE_AUDIT_v0.1.2.md). Historical evidence below remains unchanged.
+
 **2026-11-02 — v0.1.1: PHYSICAL ACCEPTANCE DEFERRED / NON-BLOCKING.**
 #1 labelled table records and #32 conversation-owned transcript thumbnails are
 VERIFIED AUTOMATICALLY / VERIFIED ON EMULATOR, but NOT YET VERIFIED PHYSICALLY
@@ -21,7 +23,7 @@ phone/watch debug pair; preserve owner installations and keys.
 
 ## Current state
 
-Current source targets v0.1.1 / code 2. #1 implementation PR #34 and #32 PR #35
+Current source targets v0.1.2 / code 3. #1 implementation PR #34 and #32 PR #35
 are merged; CI PR #36 passed its hosted gate and is merged. Follow
 [RELEASE_SIGNING.md](RELEASE_SIGNING.md) for the existing production identity and
 protected signing/tag gates; never replace the permanent key.

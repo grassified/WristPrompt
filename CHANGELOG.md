@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2] - 2026-11-07 (prerelease)
+
+- Offline Unicode/LaTeX rendering with bounded exact-source fallback and source/copy controls.
+- Preserve Markdown, code/currency, tables, streaming and real Stop.
+- Approximately 10 MB universal Wear increase; RaTeX 0.1.15 and Noto Sans Math.
+- Physical math acceptance deferred/non-blocking; see [release notes](docs/RELEASE_NOTES_v0.1.2.md) and [#40](https://github.com/grassified/WristPrompt/issues/40).
+
 ## [0.1.1] - 2026-11-03 (prerelease)
 
 - Labelled stacked Markdown table records with local exact fallback; surrounding

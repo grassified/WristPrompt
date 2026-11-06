@@ -1,5 +1,7 @@
 # v0.1.2 local mathematical rendering candidate
 
+Release policy updated 2026-11-07: physical math acceptance is DEFERRED / NON-BLOCKING under owner authorization. Version 0.1.2/code 3 preparation and fresh evidence are in [release audit](RELEASE_AUDIT_v0.1.2.md). The candidate measurements and implementation history below are retained as dated evidence.
+
 Rendering-only enhancement on `codex/v0.1.2-local-math`. No provider or v0.2.0
 feature work. Existing v0.1.0/v0.1.1 tags/releases and production signing identity
 are unchanged. Version promotion and release publication are separate actions;

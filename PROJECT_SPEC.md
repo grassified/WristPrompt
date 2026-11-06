@@ -1,4 +1,4 @@
-# WristPrompt v0.1.1
+# WristPrompt v0.1.2
 
 Your key. Your model. Your watch.
 
@@ -54,7 +54,7 @@ Automated/emulator evidence does not establish owner-device behavior. Distributi
 matched production signing and verified artifacts; see
 [signing checkpoint](docs/RELEASE_SIGNING.md). No v0.2.0 provider work ships here.
 
-## v0.1.2 rendering candidate
+## v0.1.2 prerelease rendering gate
 
 Add local native inline/display LaTeX and extended Unicode mathematical glyphs to
 existing Markdown. Preserve stacked tables, literal code, source meaning, font

@@ -1,5 +1,7 @@
 # Release roadmap
 
+**EARLY ACCESS — PHYSICAL MATH ACCEPTANCE DEFERRED / NON-BLOCKING.** Owner authorizes this production-signed prerelease after all required non-physical gates pass. Galaxy Watch 7 ARM64 runtime, TalkBack, physical clipboard paste and sustained battery/performance remain NOT VERIFIED PHYSICALLY. [Issue #40](https://github.com/grassified/WristPrompt/issues/40) tracks acceptance; #1, #32 and #11 remain open. See [v0.1.2 audit](docs/RELEASE_AUDIT_v0.1.2.md). Historical evidence below remains unchanged.
+
 Dated checkpoints below retain their original evidence. The 2026-11-02 status
 and D7-G acceptance supersede historical pending statements.
 
