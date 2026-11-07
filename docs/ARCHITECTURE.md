@@ -50,9 +50,11 @@ attempts never masquerade as completion.
 and encoding. The ViewModel preflights the draft and still controls when it
 resolves conversation-owned images and consumes the draft. The session validates
 against the current catalog after any refresh. The provider encodes chat and
-image generation through the adapter before starting HTTP. The session still
-interprets OpenAI events into a result, and the ViewModel owns the single
-completion commit. Extracting terminal interpretation is a separate follow-up.
+image generation through the adapter before starting HTTP. `OpenAiStreamAdapter`
+interprets decoded Responses events, including which events produce progress and
+whether the stream completed with the required output. The session owns the Job
+and lease checks around those events. The provider owns HTTP and SSE transport,
+and the ViewModel owns the single completion commit.
 
 ChatConversation owns process-memory display state and a separate JSON replay
 history. Only whole completed exchanges enter replay. Failed/cancelled/interrupted

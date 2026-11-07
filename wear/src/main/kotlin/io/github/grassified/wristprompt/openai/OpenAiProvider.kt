@@ -86,7 +86,7 @@ class OpenAiProvider(private val http: OpenAiHttp) : AiProvider {
                     val event = events.next() ?: throw ApiFailure(ApiProblem.INTERRUPTED)
                     onEvent(if (event is ResponseEvent.Failed) ResponseEvent.Failed(ApiErrors.forMode(ApiErrors.withResponseContext(event.failure, response.code,
                         response.header("openai-request-id") ?: response.header("x-request-id")), credential.mode)) else event)
-                    if (event is ResponseEvent.Completed || event is ResponseEvent.Failed || event == ResponseEvent.Incomplete) break
+                    if (event.endsStream) break
                 }
             }
         } catch (cancelled: CancellationException) { throw cancelled

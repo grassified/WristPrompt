@@ -81,15 +81,15 @@ class InferenceSession(
             if (prepared.models.none { it.slug == selected }) throw ApiFailure(ApiProblem.NO_MODELS)
             if (!isCurrent(prepared.credential)) throw ApiFailure(ApiProblem.STALE_ACCOUNT)
             job.ensureActive()
-            val result = StreamResult(ResponsesProtocol.expected(current.mode))
-            val receive: suspend (ResponseEvent) -> Unit = receive@{ event ->
+            val stream = OpenAiStreamAdapter(prepared.credential.mode, image)
+            val receive: suspend (ResponseEvent) -> Unit = { event ->
                 // Check the owning Job, even if a misbehaving provider invokes us in NonCancellable.
                 job.ensureActive()
-                if (result.completed) return@receive
-                if (!isCurrent(prepared.credential)) throw ApiFailure(ApiProblem.STALE_ACCOUNT)
-                job.ensureActive()
-                result.accept(event)
-                if (event != ResponseEvent.Ignored) onProgress(result)
+                val progress = stream.accept(event) {
+                    if (!isCurrent(prepared.credential)) throw ApiFailure(ApiProblem.STALE_ACCOUNT)
+                    job.ensureActive()
+                }
+                if (progress != null) onProgress(progress)
                 job.ensureActive()
             }
             val model = prepared.models.first { it.slug == selected }
@@ -98,8 +98,7 @@ class InferenceSession(
             else if (input == null) provider.stream(prepared.credential, selected, receive)
             else provider.stream(prepared.credential, model, input, configuration, receive)
             job.ensureActive()
-            result.end()
-            if (image && result.generated == null) GenerationOutput.invalid()
+            val result = stream.finish()
             if (!isCurrent(prepared.credential)) throw ApiFailure(ApiProblem.STALE_ACCOUNT)
             job.ensureActive()
             result
