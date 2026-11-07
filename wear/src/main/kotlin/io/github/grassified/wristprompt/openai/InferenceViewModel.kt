@@ -146,7 +146,7 @@ class InferenceViewModel(
     }
     private fun thinkingValidationNotice(catalog: PreparedCatalog, selected: String): String? = try {
         val model = catalog.models.firstOrNull { it.slug == selected } ?: throw ApiFailure(ApiProblem.THINKING_UNSUPPORTED)
-        InferenceControls.validate(conversation.configuration, model, catalog.credential.mode)
+        OpenAiRequestAdapter(model, catalog.credential.mode).validateConfiguration(conversation.configuration)
         null
     } catch (_: ApiFailure) { "Saved thinking level is unsupported. Choose Default or a supported value before Send." }
     fun loadModels() {
@@ -382,20 +382,25 @@ class InferenceViewModel(
     private fun send(imageGeneration: Boolean, onStarted: () -> Unit) {
         if (operation?.isActive == true || state.value.busy) return
         val catalog = prepared?.takeIf(::compatible) ?: return
-        val selected = state.value.selectedSlug?.takeIf { slug -> catalog.models.any { it.slug == slug } } ?: return
+        val selected = state.value.selectedSlug ?: return
+        val model = catalog.models.firstOrNull { it.slug == selected } ?: return
         contextModel = selected
-        if (imageSelection.selected.value.isNotEmpty() && conversation.state.draft.isBlank()) {
+        val selectedImages = imageSelection.selected.value.toList()
+        if (selectedImages.isNotEmpty() && conversation.state.draft.isBlank()) {
             mutableChat.value = conversation.state.copy(problem = ApiProblem.IMAGE_TEXT_REQUIRED); return
         }
         if (!conversation.state.canSend) return
         val configuration = conversation.configuration
-        if (imageGeneration) {
+        val requests = OpenAiRequestAdapter(model, catalog.credential.mode)
+        val generationInput = if (imageGeneration) {
             try {
-                OpenAiGeneration.request(catalog.models.first { it.slug == selected }, catalog.credential.mode, conversation.preview(imageSelection.selected.value))
+                val input = conversation.preview(selectedImages)
+                requests.encodeImageGeneration(input)
                 if (conversationStore == null || generatedImages == null) throw ApiFailure(ApiProblem.CHAT_STORAGE, requestNotSent = true)
+                input
             } catch (failure: ApiFailure) { mutableChat.value = conversation.state.copy(problem = failure.problem); return }
-        }
-        try { if (!imageGeneration) InferenceControls.validate(configuration, catalog.models.first { it.slug == selected }, catalog.credential.mode) }
+        } else null
+        try { if (!imageGeneration) requests.validateConfiguration(configuration) }
         catch (_: ApiFailure) {
             mutableState.value = state.value.copy(thinkingNotice = "Thinking level is unsupported. Choose Default or a supported value.")
             mutableChat.value = chat.value.copy(problem = ApiProblem.THINKING_UNSUPPORTED)
@@ -407,20 +412,15 @@ class InferenceViewModel(
             writer = ConversationWriter(conversationStore, ConversationEntry(owner = owner, route = catalog.credential.mode.name,
                 model = selected, title = title, updated = System.currentTimeMillis(), snapshot = conversation.snapshot()))
         }
-        val selectedImages = imageSelection.selected.value.toList()
         val draft = conversation.state.draft
         val token = inputRevision
-        val canonical = conversation.preview(selectedImages)
-        val hasImages = ImageInput.hasImages(canonical)
-        val plainInput = try {
-            OpenAiImageCapabilities.validate(selected, catalog.credential.mode, canonical)
-            if (hasImages) null else canonical.also {
-                if (imageGeneration) OpenAiGeneration.request(catalog.models.first { model -> model.slug == selected }, catalog.credential.mode, it)
-                else ResponsesProtocol.request(selected, it, configuration, catalog.models.first { model -> model.slug == selected }.thinking, catalog.credential.mode)
-            }
+        val canonical = generationInput ?: conversation.preview(selectedImages)
+        val needsImageMaterialization = try {
+            !imageGeneration && requests.preflightChat(canonical, configuration)
         } catch (failure: ApiFailure) {
             mutableChat.value = conversation.state.copy(problem = failure.problem); return
         }
+        val plainInput = canonical.takeUnless { needsImageMaterialization }
         val run = ++epoch
         val activeWriter = writer
         var began = false
@@ -435,7 +435,7 @@ class InferenceViewModel(
         }
         // Preserve synchronous text-only start/Stop ownership. Images require off-Main preflight.
         val started = if (plainInput != null) beginValidated() ?: return else null
-        if (hasImages) mutableChat.value = conversation.state.copy(stage = ChatStage.STARTING, problem = null)
+        if (needsImageMaterialization) mutableChat.value = conversation.state.copy(stage = ChatStage.STARTING, problem = null)
         launchOperation {
             try {
                 val input = plainInput ?: run {
@@ -445,7 +445,7 @@ class InferenceViewModel(
                 }
                 val checkpoint = started ?: run {
                     // Bound the full encoded request before consuming the draft or dispatching HTTP.
-                    ResponsesProtocol.request(selected, input, configuration, catalog.models.first { it.slug == selected }.thinking, catalog.credential.mode)
+                    requests.encodeChat(input, configuration)
                     currentCoroutineContext().ensureActive()
                     if (run != epoch || !compatible(catalog) || inputRevision != token || conversation.state.draft != draft ||
                         imageSelection.selected.value != selectedImages) { publishChat(); return@launchOperation }

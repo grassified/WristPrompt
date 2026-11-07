@@ -46,6 +46,14 @@ cancels the actual OkHttp Call on cancellation. No automatic generation/model re
 Only `response.completed` establishes success; EOF, incomplete, failed and cancelled
 attempts never masquerade as completion.
 
+`OpenAiRequestAdapter` owns model- and billing-route-specific request checks
+and encoding. The ViewModel preflights the draft and still controls when it
+resolves conversation-owned images and consumes the draft. The session validates
+against the current catalog after any refresh. The provider encodes chat and
+image generation through the adapter before starting HTTP. The session still
+interprets OpenAI events into a result, and the ViewModel owns the single
+completion commit. Extracting terminal interpretation is a separate follow-up.
+
 ChatConversation owns process-memory display state and a separate JSON replay
 history. Only whole completed exchanges enter replay. Failed/cancelled/interrupted
 attempts may remain visible as excluded/partial display content. Validated opaque

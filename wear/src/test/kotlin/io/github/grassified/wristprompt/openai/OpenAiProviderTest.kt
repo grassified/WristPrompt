@@ -1,6 +1,8 @@
 package io.github.grassified.wristprompt.openai
 
+import io.github.grassified.wristprompt.auth.CredentialMode
 import io.github.grassified.wristprompt.auth.OpenAiAuth
+import io.github.grassified.wristprompt.images.ImageLimits
 import kotlinx.coroutines.*
 import java.util.concurrent.atomic.AtomicBoolean
 import okio.buffer
@@ -57,6 +59,35 @@ class OpenAiProviderTest {
         val result = StreamResult(); provider.stream(lease, "account-model", result::accept); result.end()
         assertTrue(result.proofPassed)
     }
+    @Test fun chatRejectsEmptyInputAndLocalImageReferencesBeforeHttp() {
+        val provider = OpenAiProvider(http({ throw AssertionError("Invalid input reached HTTP") }))
+        val model = AiModel("gpt-6.1-sol", "Synthetic")
+        val localImage = ImageInput.user("Synthetic prompt", listOf(ImageLimits.newId()))
+        for (mode in CredentialMode.entries) {
+            val credential = CredentialLease("client", 1, "synthetic-bearer", 9999, mode)
+            for (input in listOf(emptyList(), listOf(localImage))) {
+                assertThrows(IllegalArgumentException::class.java) {
+                    runBlocking { provider.stream(credential, model, input, InferenceConfiguration()) {} }
+                }
+            }
+        }
+    }
+
+    @Test fun chatDoesNotTrustAnUnreviewedThinkingCapabilityAtHttpBoundary() {
+        val mode = CredentialMode.OPENAI_API_KEY
+        val credential = CredentialLease("client", 1, "synthetic-bearer", 9999, mode)
+        val provider = OpenAiProvider(http({ throw AssertionError("Unreviewed control reached HTTP") }))
+        val capability = ControlCapability("thinking", "openai", "unreviewed-model", mode.name,
+            listOf("low"), "synthetic-catalog")
+        val model = AiModel(capability.model, "Synthetic", thinking = capability)
+        val configuration = InferenceConfiguration(controls = listOf(capability.selection("low")))
+        val failure = assertThrows(ApiFailure::class.java) {
+            runBlocking { provider.stream(credential, model, listOf(ImageInput.user("Synthetic prompt")), configuration) {} }
+        }
+        assertEquals(ApiProblem.THINKING_UNSUPPORTED, failure.problem)
+        assertTrue(failure.requestNotSent)
+    }
+
     @Test fun httpAdmissionFailurePreservesSafeStatusAndBodyShape() = runBlocking {
         val provider = OpenAiProvider(http({ 503 to """{"detail":"synthetic-sensitive-detail"}""" }))
         try { provider.models(lease); fail("Expected failure") }
