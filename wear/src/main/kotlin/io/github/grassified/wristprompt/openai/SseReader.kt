@@ -60,32 +60,3 @@ class SseReader(input: InputStream, private val generation: Boolean = false) {
         }
     }
 }
-
-/** A terminal event, not received text or [DONE], decides the stream result. */
-class StreamResult(private val expected: String = ResponsesProtocol.EXPECTED_TEXT) {
-    var output: String = ""; private set
-    var sawTextDelta: Boolean = false; private set
-    var completed: Boolean = false; private set
-    var outputItems: List<kotlinx.serialization.json.JsonObject>? = null; private set
-    var generated: GeneratedOutput? = null; private set
-    private var terminal = false
-    fun accept(event: ResponseEvent) {
-        check(!terminal)
-        when (event) {
-            is ResponseEvent.Delta -> {
-                if (output.length + event.text.length > ResponsesProtocol.MAX_TEXT_CHARS) throw ApiFailure(ApiProblem.PROTOCOL, protocolDetail = ProtocolDetail.OUTPUT_LIMIT)
-                output += event.text
-                sawTextDelta = sawTextDelta || event.text.isNotEmpty()
-            }
-            is ResponseEvent.Completed -> {
-                terminal = true; completed = true; outputItems = event.outputItems; generated = event.generated
-                event.finalText?.let { output = it }
-            }
-            is ResponseEvent.Failed -> { terminal = true; throw event.failure }
-            ResponseEvent.Incomplete -> { terminal = true; throw ApiFailure(ApiProblem.INCOMPLETE) }
-            ResponseEvent.Ignored -> Unit
-        }
-    }
-    fun end() { if (!completed) throw ApiFailure(ApiProblem.INTERRUPTED) }
-    val proofPassed: Boolean get() = completed && sawTextDelta && output == expected
-}
