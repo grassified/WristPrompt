@@ -24,6 +24,13 @@ interface ConversationStore {
     suspend fun rename(id: String, owner: String, revision: Long, title: String)
 }
 
+/** The routes and codec understood by the original OpenAI history writer. */
+internal object LegacyOpenAiHistory {
+    const val PROVIDER = "openai"
+    const val REPLAY_FORMAT = "openai_responses_v1"
+    val routes = setOf("CHATGPT_PLAN", "OPENAI_API_KEY")
+}
+
 /** Strict bounded codec. Unknown versions/types are errors, never silent data loss. */
 object ConversationCodec {
     const val MAX_ENTRY_BYTES = 1_048_576
@@ -31,7 +38,7 @@ object ConversationCodec {
     fun validate(entry: ConversationEntry) {
         require(UUID.fromString(entry.id).toString() == entry.id)
         require(UUID.fromString(entry.owner).toString() == entry.owner)
-        require(entry.route in setOf("CHATGPT_PLAN", "OPENAI_API_KEY"))
+        require(entry.route in LegacyOpenAiHistory.routes)
         require(entry.model.length in 1..256 && entry.title.isNotBlank() && entry.title.length <= 120)
         require(entry.updated >= 0 && entry.revision >= 0)
         entry.snapshot.validate()
