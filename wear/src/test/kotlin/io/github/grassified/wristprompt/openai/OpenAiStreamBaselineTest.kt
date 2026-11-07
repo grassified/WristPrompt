@@ -65,7 +65,6 @@ class OpenAiStreamBaselineTest {
                 attempts
             }
             Executors.newSingleThreadExecutor().asCoroutineDispatcher().use { main ->
-                Dispatchers.setMain(main)
                 val client = OkHttpClient.Builder().proxy(Proxy.NO_PROXY)
                     .retryOnConnectionFailure(false).followRedirects(false).addInterceptor { chain ->
                         val request = chain.request()
@@ -78,39 +77,44 @@ class OpenAiStreamBaselineTest {
                     { CredentialLease("synthetic-loopback-account", 1, "synthetic-loopback-plan", Long.MAX_VALUE) },
                     OpenAiProvider(OpenAiHttp(client)), { true },
                 )
-                val vm = withContext(main) {
-                    InferenceViewModel(MutableStateFlow(InferenceAccessState(
-                        client = "synthetic-loopback-account", generation = 1, usable = true)), session)
-                }
+                Dispatchers.setMain(main)
                 try {
-                    withTimeout(10_000) {
-                        vm.state.first { it.stage == ProofStage.READY }
-                        send(vm, main, "completed question")
-                        val first = vm.chat.first { it.stage == ChatStage.COMPLETED }
-                        assertEquals("final answer", first.messages.last().text)
+                    withContext(main) {
+                        val vm = InferenceViewModel(MutableStateFlow(InferenceAccessState(
+                            client = "synthetic-loopback-account", generation = 1, usable = true)), session)
+                        try {
+                            withTimeout(10_000) {
+                                vm.state.first { it.stage == ProofStage.READY }
+                                send(vm, "completed question")
+                                val first = vm.chat.first { it.stage == ChatStage.COMPLETED }
+                                assertEquals("final answer", first.messages.last().text)
 
-                        send(vm, main, "failed question")
-                        val failure = vm.chat.first { it.stage == ChatStage.FAILED }
-                        assertEquals(ChatMessageStatus.EXCLUDED, failure.messages.last().status)
+                                send(vm, "failed question")
+                                val failure = vm.chat.first { it.stage == ChatStage.FAILED }
+                                assertEquals(ChatMessageStatus.EXCLUDED, failure.messages.last().status)
 
-                        send(vm, main, "interrupted question")
-                        val interrupted = vm.chat.first { it.stage == ChatStage.FAILED }
-                        assertEquals(ApiProblem.INTERRUPTED, interrupted.problem)
-                        assertEquals("streamed partial", interrupted.partial)
+                                send(vm, "interrupted question")
+                                val interrupted = vm.chat.first { it.stage == ChatStage.FAILED }
+                                assertEquals(ApiProblem.INTERRUPTED, interrupted.problem)
+                                assertEquals("streamed partial", interrupted.partial)
 
-                        send(vm, main, "stopped question")
-                        vm.chat.first { it.stage == ChatStage.RECEIVING && it.partial == "streamed partial" }
-                        assertFalse(peerSawClose.isCompleted)
-                        withContext(main) { vm.stop() }
-                        assertEquals(ChatStage.CANCELLED, vm.chat.value.stage)
-                        assertEquals(ChatMessageStatus.EXCLUDED, vm.chat.value.messages.last().status)
-                        peerSawClose.await()
+                                send(vm, "stopped question")
+                                vm.chat.first { it.stage == ChatStage.RECEIVING && it.partial == "streamed partial" }
+                                assertFalse(peerSawClose.isCompleted)
+                                vm.stop()
+                                assertEquals(ChatStage.CANCELLED, vm.chat.value.stage)
+                                assertEquals(ChatMessageStatus.EXCLUDED, vm.chat.value.messages.last().status)
+                                peerSawClose.await()
 
-                        send(vm, main, "explicit follow-up")
-                        vm.chat.first { it.stage == ChatStage.COMPLETED }
+                                send(vm, "explicit follow-up")
+                                vm.chat.first { it.stage == ChatStage.COMPLETED }
+                            }
+                        } finally {
+                            // A failing socket peer can cancel the test while Main is still in use.
+                            withContext(NonCancellable) { vm.viewModelScope.coroutineContext.job.cancelAndJoin() }
+                        }
                     }
                 } finally {
-                    vm.viewModelScope.coroutineContext.job.cancelAndJoin()
                     Dispatchers.resetMain()
                     client.connectionPool.evictAll()
                 }
@@ -133,7 +137,7 @@ class OpenAiStreamBaselineTest {
         }
     }
 
-    private suspend fun send(vm: InferenceViewModel, main: CoroutineDispatcher, question: String) = withContext(main) {
+    private fun send(vm: InferenceViewModel, question: String) {
         vm.draft(question)
         vm.send()
     }
