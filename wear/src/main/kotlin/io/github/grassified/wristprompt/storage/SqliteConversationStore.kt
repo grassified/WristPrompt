@@ -12,6 +12,14 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.util.UUID
 
+private const val LEGACY_ROUTE = "route IN (?,?)"
+private const val SUPPORTED_HISTORY = "provider=? AND replay_format=? AND $LEGACY_ROUTE"
+private val openAiHistoryArgs = arrayOf(LegacyOpenAiHistory.PROVIDER, LegacyOpenAiHistory.REPLAY_FORMAT,
+    *LegacyOpenAiHistory.routes.toTypedArray())
+private const val PROVIDER_COLUMN = "provider TEXT"
+private const val REPLAY_FORMAT_COLUMN = "replay_format TEXT CHECK ((provider IS NULL AND replay_format IS NULL) OR " +
+    "(typeof(provider)='text' AND typeof(replay_format)='text'))"
+
 /** No destructive fallback on corruption, failed migration, full disk or future schema. */
 class SqliteConversationStore(context: Context) : ConversationStore {
     private val mutex = Mutex()
@@ -66,28 +74,38 @@ class SqliteConversationStore(context: Context) : ConversationStore {
                 put("title", entry.title); put("updated", entry.updated); put("revision", saved.revision)
                 put("display", body); put("replay", replay); put("bytes", bytes); put("deleted", 0)
             }
-            if (existing) check(db.update("conversations", values, "id=? AND revision=? AND deleted=0",
-                arrayOf(entry.id, entry.revision.toString())) == 1)
-            else db.insertOrThrow("conversations", null, values)
+            if (existing) check(db.update("conversations", values, "id=? AND revision=? AND deleted=0 AND $SUPPORTED_HISTORY",
+                arrayOf(entry.id, entry.revision.toString(), *openAiHistoryArgs)) == 1)
+            else {
+                values.put("provider", LegacyOpenAiHistory.PROVIDER)
+                values.put("replay_format", LegacyOpenAiHistory.REPLAY_FORMAT)
+                db.insertOrThrow("conversations", null, values)
+            }
             saved
         }
     }
     override suspend fun load(id: String, owner: String): ConversationEntry? = access { db ->
-        db.rawQuery("SELECT length(CAST(display AS BLOB))+length(CAST(replay AS BLOB)) FROM conversations WHERE id=? AND owner=? AND deleted=0",
-            arrayOf(id, owner)).use { if (it.moveToFirst()) require(it.getLong(0) <= ConversationCodec.MAX_ENTRY_BYTES) }
-        db.rawQuery("SELECT route,model,title,updated,revision,display,replay FROM conversations WHERE id=? AND owner=? AND deleted=0",
-            arrayOf(id, owner)).use { c ->
+        val owned = "id=? AND owner=? AND deleted=0"
+        val entry = db.rawQuery("SELECT route,model,title,updated,revision,display,replay FROM conversations WHERE $owned " +
+            "AND $SUPPORTED_HISTORY AND length(CAST(display AS BLOB))+length(CAST(replay AS BLOB))<=CAST(? AS INTEGER)",
+            arrayOf(id, owner, *openAiHistoryArgs, ConversationCodec.MAX_ENTRY_BYTES.toString())).use { c ->
             if (!c.moveToFirst()) null else ConversationEntry(id, owner, c.getString(0), c.getString(1), c.getString(2),
                 c.getLong(3), c.getLong(4), ConversationCodec.decode(c.getString(5), c.getString(6))).also(ConversationCodec::validate)
         }
+        // Recovery treats absence as permission to remove orphaned files. An unreadable row must fail closed.
+        if (entry == null) db.rawQuery("SELECT 1 FROM conversations WHERE $owned", arrayOf(id, owner)).use {
+            if (it.moveToFirst()) throw ConversationStorageException()
+        }
+        entry
     }
     override suspend fun list(owner: String): List<ConversationSummary> = access { db ->
-        db.rawQuery("SELECT substr(id,1,37),substr(title,1,121),substr(model,1,257),substr(route,1,32),updated,revision FROM conversations WHERE owner=? AND deleted=0 ORDER BY updated DESC,id LIMIT 100",
-            arrayOf(owner)).use { c -> buildList {
+        db.rawQuery("SELECT substr(id,1,37),substr(title,1,121),substr(model,1,257),route,updated,revision FROM conversations " +
+            "WHERE owner=? AND deleted=0 AND $SUPPORTED_HISTORY ORDER BY updated DESC,id LIMIT 100",
+            arrayOf(owner, *openAiHistoryArgs)).use { c -> buildList {
                 while (c.moveToNext()) {
                     val item = ConversationSummary(c.getString(0), c.getString(1), c.getString(2), c.getString(3), c.getLong(4), c.getLong(5))
                     require(UUID.fromString(item.id).toString() == item.id && item.title.isNotBlank() && item.title.length <= 120 &&
-                        item.model.length in 1..256 && item.route in setOf("CHATGPT_PLAN", "OPENAI_API_KEY") && item.updated >= 0 && item.revision >= 0)
+                        item.model.length in 1..256 && item.updated >= 0 && item.revision >= 0)
                     add(item)
                 }
             } }
@@ -95,24 +113,32 @@ class SqliteConversationStore(context: Context) : ConversationStore {
     override suspend fun delete(id: String, owner: String, revision: Long) = access { db ->
         // Small tombstone prevents a stale completion from recreating a deleted UUID.
         val values = ContentValues().apply { put("deleted", 1); put("display", ""); put("replay", ""); put("bytes", 0); put("title", "") }
-        check(db.update("conversations", values, "id=? AND owner=? AND revision=? AND deleted=0", arrayOf(id, owner, revision.toString())) == 1)
+        check(db.update("conversations", values, "id=? AND owner=? AND revision=? AND deleted=0 AND $SUPPORTED_HISTORY",
+            arrayOf(id, owner, revision.toString(), *openAiHistoryArgs)) == 1)
         Unit
     }
     override suspend fun rename(id: String, owner: String, revision: Long, title: String) = access { db ->
         require(title.isNotBlank() && title.length <= 120)
         val values = ContentValues().apply { put("title", title); put("revision", Math.addExact(revision, 1)) }
-        check(db.update("conversations", values, "id=? AND owner=? AND revision=? AND deleted=0", arrayOf(id, owner, revision.toString())) == 1)
+        check(db.update("conversations", values, "id=? AND owner=? AND revision=? AND deleted=0 AND $SUPPORTED_HISTORY",
+            arrayOf(id, owner, revision.toString(), *openAiHistoryArgs)) == 1)
         Unit
     }
-    private class Database(context: Context) : SQLiteOpenHelper(context, "conversations.db", null, 1,
+    private class Database(context: Context) : SQLiteOpenHelper(context, "conversations.db", null, 2,
         DatabaseErrorHandler { throw ConversationStorageException() }) {
         override fun onConfigure(db: SQLiteDatabase) { db.setForeignKeyConstraintsEnabled(true) }
         override fun onCreate(db: SQLiteDatabase) {
             db.execSQL("CREATE TABLE owners(identity_hash TEXT PRIMARY KEY, scope TEXT NOT NULL UNIQUE)")
-            db.execSQL("CREATE TABLE conversations(id TEXT PRIMARY KEY,owner TEXT NOT NULL REFERENCES owners(scope),route TEXT NOT NULL,model TEXT NOT NULL,title TEXT NOT NULL,updated INTEGER NOT NULL,revision INTEGER NOT NULL,display TEXT NOT NULL,replay TEXT NOT NULL,bytes INTEGER NOT NULL,deleted INTEGER NOT NULL DEFAULT 0)")
+            db.execSQL("CREATE TABLE conversations(id TEXT PRIMARY KEY,owner TEXT NOT NULL REFERENCES owners(scope),route TEXT NOT NULL,model TEXT NOT NULL,title TEXT NOT NULL,updated INTEGER NOT NULL,revision INTEGER NOT NULL,display TEXT NOT NULL,replay TEXT NOT NULL,bytes INTEGER NOT NULL,deleted INTEGER NOT NULL DEFAULT 0,$PROVIDER_COLUMN,$REPLAY_FORMAT_COLUMN)")
             db.execSQL("CREATE INDEX conversation_history ON conversations(owner,deleted,updated DESC,id)")
         }
-        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { throw ConversationStorageException() }
+        override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+            if (oldVersion != 1 || newVersion != 2) throw ConversationStorageException()
+            // SQLiteOpenHelper commits these statements and user_version together.
+            db.execSQL("ALTER TABLE conversations ADD COLUMN $PROVIDER_COLUMN")
+            db.execSQL("ALTER TABLE conversations ADD COLUMN $REPLAY_FORMAT_COLUMN")
+            db.execSQL("UPDATE conversations SET provider=?, replay_format=? WHERE $LEGACY_ROUTE", openAiHistoryArgs)
+        }
         override fun onDowngrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) { throw ConversationStorageException() }
     }
 }

@@ -27,6 +27,7 @@ class ConversationStorageInstrumentation : Instrumentation() {
                 when (checkpoint) {
                     null -> verify()
                     "legacy-v012" -> LegacyOpenAiFixture.verify(storageContext, context.assets) { phase = it }
+                    "migration-failures" -> LegacyOpenAiFixture.verifyFailures(storageContext, context.assets) { phase = it }
                     "seed" -> seedRestart()
                     "verify" -> verifyRestart()
                     "limits" -> verifyLimits()
@@ -36,7 +37,8 @@ class ConversationStorageInstrumentation : Instrumentation() {
                 }
             }
             outcome.putString("stream", when (checkpoint) {
-                "legacy-v012" -> "PASS: frozen v0.1.2 SQLite, replay, owner isolation and attachment recovery\n"
+                "legacy-v012" -> "PASS: v1 to v2, both owners and all four rows preserved, exact display/replay bytes, attachments and history lifecycle\n"
+                "migration-failures" -> "PASS: v1 rollback and retry, unknown route, incompatible metadata, safe attachment recovery and downgrade rejection\n"
                 null -> "PASS: SQLite durable lifecycle, rollback, owner isolation, deletion, limits, failed-write rollback, record recovery, future schema, corruption preservation\n"
                 else -> "PASS: restart checkpoint $checkpoint\n"
             })
@@ -134,7 +136,8 @@ class ConversationStorageInstrumentation : Instrumentation() {
             // Bulk fixture: valid minimal tombstones, same schema as production deletion.
             db.beginTransaction()
             try {
-                db.compileStatement("INSERT INTO conversations VALUES(?,?,?,?,?,?,?,?,?,?,1)").use { statement ->
+                db.compileStatement("INSERT INTO conversations(id,owner,route,model,title,updated,revision,display,replay,bytes,deleted,provider,replay_format) " +
+                    "VALUES(?,?,?,?,?,?,?,?,?,?,1,'openai','openai_responses_v1')").use { statement ->
                     repeat(9_999 - 33) {
                         statement.clearBindings()
                         statement.bindString(1, java.util.UUID.randomUUID().toString()); statement.bindString(2, owner)

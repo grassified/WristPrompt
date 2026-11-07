@@ -25,6 +25,16 @@ class ConversationPersistenceTest {
         restored.draft("next")
         assertEquals(listOf("user text", "answer", "next"), restored.begin()!!.map { it["content"]!!.jsonPrimitive.content })
     }
+    @Test fun existingOpenAiRoutesUseTheLegacyCodecAndUnknownRoutesAreRejected() {
+        val completed = entry(completed().snapshot())
+        for (route in listOf("CHATGPT_PLAN", "OPENAI_API_KEY")) {
+            val (display, replay) = ConversationCodec.encode(completed.copy(route = route))
+            assertEquals(completed.snapshot, ConversationCodec.decode(display, replay))
+        }
+        for (route in listOf("unknown", "chatgpt_plan", "CHATGPT_PLAN ")) {
+            assertThrows(IllegalArgumentException::class.java) { ConversationCodec.encode(completed.copy(route = route)) }
+        }
+    }
     @Test fun interruptedRequestRestoresAsExcludedWithoutResendingOrReplayingIt() {
         val c = completed(); c.draft("interrupted"); c.begin(); c.progress("uncommitted streaming")
         val snapshot = roundtrip(c)

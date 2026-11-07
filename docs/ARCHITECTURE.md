@@ -93,6 +93,15 @@ continuation requires explicit Send and compatible account/model/billing ownersh
 No streaming-token persistence or automatic replay. See
 [D6_B_STORAGE.md](D6_B_STORAGE.md) and [D6_C_HISTORY.md](D6_C_HISTORY.md).
 
+SQLite schema v2 adds `provider` and `replay_format` to each conversation. The
+v1 upgrade uses the `SQLiteOpenHelper` transaction to tag `CHATGPT_PLAN` and
+`OPENAI_API_KEY` as `openai` with `openai_responses_v1`. Original columns and
+attachment paths stay intact. New OpenAI rows receive the same metadata. Unknown
+legacy routes retain both columns as NULL. Rows with incompatible route or replay
+metadata stay out of normal history and reject direct loads and writes. Failed
+loads also keep attachment recovery from treating unreadable chats as deleted.
+The legacy v1 app cannot open a v2 database. See the [frozen upgrade fixture](../wear/src/androidTest/fixtures/README.md).
+
 D7 adds phone-managed presets and a private imported-photo library synchronized
 through bounded Data Layer protocols. Sent attachments and generated images have
 conversation-owned private files and durable metadata. Missing files fail clearly;

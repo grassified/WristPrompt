@@ -15,6 +15,13 @@ install the matched debug and test APKs on a verified disposable emulator, then 
 Require the explicit PASS stream; a zero shell exit alone is insufficient. Never
 run this workflow against owner hardware. See [D6_B_STORAGE.md](D6_B_STORAGE.md).
 
+The `legacy-v012` and `migration-failures` checkpoints each migrate a disposable
+copy of the [frozen v1 fixture](../wear/src/androidTest/fixtures/README.md). The
+first compares all original columns, raw display and replay bytes, and attachment
+paths and digests. The second aborts the backfill with a SQLite trigger, verifies
+the v1 schema and data survived, and retries the upgrade. It also exercises
+unknown routes, incompatible metadata and attachment recovery.
+
 ```sh
 ./gradlew :wear:testDebugUnitTest
 ./gradlew :mobile:testDebugUnitTest
