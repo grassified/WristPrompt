@@ -93,9 +93,7 @@ class InferenceSession(
                 job.ensureActive()
             }
             val model = prepared.models.first { it.slug == selected }
-            if (image) OpenAiGeneration.request(model, prepared.credential.mode, checkNotNull(input))
-            InferenceControls.validate(configuration, model, prepared.credential.mode)
-            if (input != null) OpenAiImageCapabilities.validate(selected, prepared.credential.mode, input)
+            OpenAiRequestAdapter(model, prepared.credential.mode).validateDispatch(input, configuration, image)
             if (image) provider.generateImage(prepared.credential, model, checkNotNull(input), receive)
             else if (input == null) provider.stream(prepared.credential, selected, receive)
             else provider.stream(prepared.credential, model, input, configuration, receive)

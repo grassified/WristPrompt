@@ -17,7 +17,7 @@ interface AiProvider {
         onEvent: suspend (ResponseEvent) -> Unit) { throw ApiFailure(ApiProblem.CONFIGURATION) }
     suspend fun stream(credential: CredentialLease, model: AiModel, input: List<JsonObject>,
         configuration: InferenceConfiguration, onEvent: suspend (ResponseEvent) -> Unit) {
-        InferenceControls.validate(configuration, model, credential.mode)
+        OpenAiRequestAdapter(model, credential.mode).validateConfiguration(configuration)
         if (configuration.controls.isNotEmpty()) throw ApiFailure(ApiProblem.CONFIGURATION)
         stream(credential, model.slug, input, onEvent)
     }
@@ -31,7 +31,7 @@ interface AiProvider {
 class OpenAiProvider(private val http: OpenAiHttp) : AiProvider {
     override suspend fun generateImage(credential: CredentialLease, model: AiModel, input: List<JsonObject>,
         onEvent: suspend (ResponseEvent) -> Unit) =
-        streamRequest(credential, OpenAiGeneration.request(model, credential.mode, input), onEvent, generation = true)
+        streamRequest(credential, OpenAiRequestAdapter(model, credential.mode).encodeImageGeneration(input), onEvent, generation = true)
     override suspend fun models(credential: CredentialLease): List<AiModel> = http.execute(
         Request.Builder().url(ResponsesProtocol.MODELS_URL).header("Authorization", "Bearer ${credential.accessToken}")
             .header("Accept", "application/json").build(), 30,
@@ -51,12 +51,14 @@ class OpenAiProvider(private val http: OpenAiHttp) : AiProvider {
         streamRequest(credential, ResponsesProtocol.request(model, credential.mode), onEvent)
 
     override suspend fun stream(credential: CredentialLease, model: String, input: List<JsonObject>, onEvent: suspend (ResponseEvent) -> Unit) =
-        streamRequest(credential, ResponsesProtocol.request(model, input, mode = credential.mode), onEvent)
+        stream(credential, AiModel(model, model), input, InferenceConfiguration(), onEvent)
 
     override suspend fun stream(credential: CredentialLease, model: AiModel, input: List<JsonObject>,
-        configuration: InferenceConfiguration, onEvent: suspend (ResponseEvent) -> Unit) =
-        streamRequest(credential, ResponsesProtocol.request(model.slug, input, configuration,
-            OpenAiThinkingCapabilities.forModel(model.slug, credential.mode), credential.mode), onEvent)
+        configuration: InferenceConfiguration, onEvent: suspend (ResponseEvent) -> Unit) {
+        val reviewedModel = model.copy(thinking = OpenAiThinkingCapabilities.forModel(model.slug, credential.mode))
+        val body = OpenAiRequestAdapter(reviewedModel, credential.mode).encodeChat(input, configuration)
+        streamRequest(credential, body, onEvent)
+    }
 
     private suspend fun streamRequest(credential: CredentialLease, body: String, onEvent: suspend (ResponseEvent) -> Unit, generation: Boolean = false) {
         var started = false
