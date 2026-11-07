@@ -26,6 +26,7 @@ class ConversationStorageInstrumentation : Instrumentation() {
             runBlocking {
                 when (checkpoint) {
                     null -> verify()
+                    "legacy-v012" -> LegacyOpenAiFixture.verify(storageContext, context.assets) { phase = it }
                     "seed" -> seedRestart()
                     "verify" -> verifyRestart()
                     "limits" -> verifyLimits()
@@ -34,7 +35,11 @@ class ConversationStorageInstrumentation : Instrumentation() {
                     else -> error("Unknown checkpoint mode")
                 }
             }
-            outcome.putString("stream", if (checkpoint != null) "PASS: restart checkpoint $checkpoint\n" else "PASS: SQLite durable lifecycle, rollback, owner isolation, deletion, limits, failed-write rollback, record recovery, future schema, corruption preservation\n")
+            outcome.putString("stream", when (checkpoint) {
+                "legacy-v012" -> "PASS: frozen v0.1.2 SQLite, replay, owner isolation and attachment recovery\n"
+                null -> "PASS: SQLite durable lifecycle, rollback, owner isolation, deletion, limits, failed-write rollback, record recovery, future schema, corruption preservation\n"
+                else -> "PASS: restart checkpoint $checkpoint\n"
+            })
             finish(Activity.RESULT_OK, outcome)
         } catch (failure: Exception) {
             outcome.putString("stream", "FAIL: $phase (${failure.javaClass.simpleName}); payloads redacted\n")
