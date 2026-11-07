@@ -21,16 +21,16 @@ class ImageGenerationCommitBoundaryTest {
         val entered = CompletableDeferred<Unit>()
         val release = CompletableDeferred<Unit>()
         var saved: ConversationEntry? = null
-        val store = object : ConversationStore {
+        val store = object : TestConversationStore() {
             override suspend fun owner(identityHash: String) = error("unused")
             override suspend fun save(entry: ConversationEntry): ConversationEntry {
                 if (entry.snapshot.replay.isNotEmpty()) { entered.complete(Unit); release.await() }
                 return entry.copy(revision = entry.revision + 1).also { saved = it }
             }
-            override suspend fun load(id: String, owner: String) = saved
-            override suspend fun list(owner: String) = emptyList<ConversationSummary>()
-            override suspend fun delete(id: String, owner: String, revision: Long) = error("unused")
-            override suspend fun rename(id: String, owner: String, revision: Long, title: String) = error("unused")
+            override suspend fun load(key: ConversationKey) = saved
+            override suspend fun list(scope: HistoryScope) = emptyList<ConversationSummary>()
+            override suspend fun delete(key: ConversationKey, revision: Long) = error("unused")
+            override suspend fun rename(key: ConversationKey, revision: Long, title: String) = error("unused")
         }
         val writer = ConversationWriter(store, ConversationEntry(owner = UUID.randomUUID().toString(), route = "OPENAI_API_KEY",
             model = "gpt-6.1-sol", title = "Synthetic", updated = 0, snapshot = pending))

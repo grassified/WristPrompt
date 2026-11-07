@@ -34,6 +34,7 @@ class WristPromptApplication : Application() {
         appScope.launch { presetSync.refresh() }
         appScope.launch { imageSync.refresh() }
         appScope.launch { generatedImages.recover(conversations) }
+        appScope.launch { conversationImages.recover(conversations) }
     }
     private val connectivity by lazy { WearConnectivity(this, BridgeProtocol.MOBILE_CAPABILITY) }
     private val hostIds by lazy { HostIdRepository(installationStore) }

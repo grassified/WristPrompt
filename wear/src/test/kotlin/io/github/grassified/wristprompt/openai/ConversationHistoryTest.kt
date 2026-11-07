@@ -18,7 +18,7 @@ class ConversationHistoryTest {
     private val access = MutableStateFlow(InferenceAccessState(client = "a", usable = true))
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun cleanup() { models.forEach { it.viewModelScope.cancel() }; Dispatchers.resetMain() }
-    private class Store : ConversationStore {
+    private class Store : TestConversationStore() {
         val owners = mutableMapOf<String, String>(); val entries = mutableMapOf<String, ConversationEntry>()
         val deleted = mutableSetOf<String>(); var gate: CompletableDeferred<Unit>? = null
         var saveGate: CompletableDeferred<Unit>? = null
@@ -29,20 +29,20 @@ class ConversationHistoryTest {
             require(entry.revision == (entries[entry.id]?.revision ?: 0))
             return entry.copy(revision = entry.revision + 1).also { entries[it.id] = it }
         }
-        override suspend fun load(id: String, owner: String): ConversationEntry? {
+        override suspend fun load(key: ConversationKey): ConversationEntry? {
             gate?.let { withContext(NonCancellable) { it.await() } }
-            return entries[id]?.takeIf { it.owner == owner }
+            return entries[key.id]?.takeIf { it.key == key }
         }
-        override suspend fun list(owner: String) = entries.values.filter { it.owner == owner }.sortedByDescending { it.updated }
-            .map { ConversationSummary(it.id, it.title, it.model, it.route, it.updated, it.revision) }
-        override suspend fun rename(id: String, owner: String, revision: Long, title: String) {
-            val e = checkNotNull(entries[id]); require(e.owner == owner && e.revision == revision)
+        override suspend fun list(scope: HistoryScope) = entries.values.filter { scope.canView(it.key) }.sortedByDescending { it.updated }
+            .map { it.summary() }
+        override suspend fun rename(key: ConversationKey, revision: Long, title: String) {
+            val e = checkNotNull(entries[key.id]); require(e.key == key && e.revision == revision)
             require(title.isNotBlank() && title.length <= 120)
-            entries[id] = e.copy(title = title, revision = revision + 1)
+            entries[key.id] = e.copy(title = title, revision = revision + 1)
         }
-        override suspend fun delete(id: String, owner: String, revision: Long) {
-            val e = checkNotNull(entries[id]); require(e.owner == owner && e.revision == revision)
-            entries.remove(id); deleted.add(id)
+        override suspend fun delete(key: ConversationKey, revision: Long) {
+            val e = checkNotNull(entries[key.id]); require(e.key == key && e.revision == revision)
+            entries.remove(key.id); deleted.add(key.id)
         }
     }
     private class Provider : AiProvider {
@@ -94,10 +94,40 @@ class ConversationHistoryTest {
         model.draft("explicit continuation"); model.send(); runCurrent(); assertEquals(1, provider.inputs.size)
     }
     @Test fun billingMismatchNeverSendsOrSwitchesRoute() = runTest {
-        val store = Store(); initial(store, route = "OPENAI_API_KEY"); val provider = Provider(); val model = create(store, provider); runCurrent()
-        model.draft("must not send"); model.send(); runCurrent()
-        assertNotNull(model.chat.value.readOnlyReason); assertTrue(provider.inputs.isEmpty())
+        val store = Store(); val old = initial(store, route = "OPENAI_API_KEY"); val provider = Provider(); val model = create(store, provider); runCurrent()
+        var opened = false
+        model.openChat(old.id) { opened = true }; model.send(); runCurrent()
+        assertFalse(opened); assertTrue(model.history.value.entries.isEmpty()); assertTrue(model.chat.value.messages.isEmpty())
+        assertTrue(provider.inputs.isEmpty())
         assertEquals(io.github.grassified.wristprompt.auth.CredentialMode.CHATGPT_PLAN, model.state.value.mode)
+    }
+    @Test fun unknownProviderRouteFormatAndInvalidReplayCannotDispatchEvenAfterReload() = runTest {
+        val store = Store()
+        val original = initial(store)
+        val variants = listOf(original.copy(provider = "future-provider"), original.copy(route = "retired-route"),
+            original.copy(replayFormat = "future-format"), original)
+        for (variant in variants) {
+            store.entries.clear()
+            store.entries[original.id] = variant.copy(replayAvailable = false,
+                snapshot = original.snapshot.copy(replay = emptyList()))
+            val provider = Provider()
+            val model = create(store, provider, local = true); runCurrent()
+            assertEquals(listOf("existing question", "existing answer"), model.chat.value.messages.map { it.text })
+            assertNotNull(model.chat.value.readOnlyReason)
+            assertNull(model.inputToken())
+            model.openChat(original.id); runCurrent()
+            model.loadModels(); runCurrent()
+            model.draft("forbidden"); model.send(); model.generateImage(); runCurrent()
+            assertTrue(provider.inputs.isEmpty()); assertTrue(model.chat.value.draft.isEmpty())
+            assertEquals(variant.key, store.entries.getValue(original.id).key)
+            assertEquals(original.revision, store.entries.getValue(original.id).revision)
+            model.newChat()
+            assertTrue(model.chat.value.messages.isEmpty()); assertTrue(model.imageSelection.selected.value.isEmpty())
+            assertTrue(provider.inputs.isEmpty())
+            model.draft("explicit new prompt"); model.send(); runCurrent()
+            assertEquals(listOf("explicit new prompt"), provider.inputs.single().map { it["content"]!!.jsonPrimitive.content })
+            model.viewModelScope.cancel()
+        }
     }
     @Test fun localHistoryRemainsReadableWhenCatalogIsOffline() = runTest {
         val store = Store(); initial(store); val provider = Provider().apply { offline = true }; val model = create(store, provider, local = true); runCurrent()

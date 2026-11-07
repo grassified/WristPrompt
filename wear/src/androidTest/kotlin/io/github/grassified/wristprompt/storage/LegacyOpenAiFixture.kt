@@ -7,9 +7,14 @@ import android.database.sqlite.SQLiteConstraintException
 import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteException
 import android.database.sqlite.SQLiteOpenHelper
+import androidx.lifecycle.viewModelScope
+import io.github.grassified.wristprompt.auth.CredentialMode
 import io.github.grassified.wristprompt.images.ImageFileStore
 import io.github.grassified.wristprompt.images.digest
 import io.github.grassified.wristprompt.openai.*
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.*
 import java.io.File
 import java.nio.file.Files
@@ -26,6 +31,11 @@ internal object LegacyOpenAiFixture {
     private const val TOMBSTONE = "20000000-0000-4000-8000-000000000004"
     private const val SENT = "30000000-0000-4000-8000-000000000001"
     private const val ORPHAN = "generated_images_v1/$API/$API_CHAT/30000000-0000-4000-8000-000000000003-image.jpg.part"
+
+    private val planScope = HistoryScope(PLAN, CredentialMode.CHATGPT_PLAN)
+    private val apiScope = HistoryScope(API, CredentialMode.OPENAI_API_KEY)
+    private fun key(id: String, scope: HistoryScope, model: String = "gpt-6.1-sol") =
+        ConversationKey(id, scope.owner, scope.mode.name, model, OpenAiHistory.PROVIDER, OpenAiHistory.REPLAY_FORMAT)
 
     suspend fun verify(deviceContext: Context, assets: AssetManager, phase: (String) -> Unit) =
         withCopy(deviceContext, assets) { root, storeContext ->
@@ -44,11 +54,11 @@ internal object LegacyOpenAiFixture {
                 val apiSlot = "40000000-0000-4000-8000-000000000002"
                 check(first.owner(digest(registration.encodeToByteArray())) == PLAN)
                 check(first.owner(digest(apiSlot.encodeToByteArray())) == API)
-                val summary = first.list(PLAN).single() // The tombstone stays hidden.
+                val summary = first.list(planScope).single() // The tombstone stays hidden.
                 check(summary.id == PLAN_CHAT && summary.route == "CHATGPT_PLAN" &&
                     summary.model == "gpt-6.1-sol" && summary.revision == 7L)
-                check(first.list(API).map { it.title } == listOf("Synthetic generated image", "Synthetic failed chat"))
-                check(first.load(API_CHAT, PLAN) == null && first.load(PLAN_CHAT, API) == null)
+                check(first.list(apiScope).map { it.title } == listOf("Synthetic generated image", "Synthetic failed chat"))
+                check(first.load(key(API_CHAT, apiScope).copy(owner = PLAN)) == null && first.load(key(PLAN_CHAT, planScope).copy(owner = API)) == null)
             } finally {
                 first.close()
             }
@@ -64,7 +74,7 @@ internal object LegacyOpenAiFixture {
             phase("reopen and continue frozen plan replay")
             val reopened = SqliteConversationStore(storeContext)
             try {
-                val plan = checkNotNull(reopened.load(PLAN_CHAT, PLAN))
+                val plan = checkNotNull(reopened.load(key(PLAN_CHAT, planScope)))
                 val planChat = ChatConversation().apply { restore(plan.snapshot) }
                 check(!planChat.state.busy && planChat.state.draft.isEmpty())
                 check(planChat.state.problem == ApiProblem.INCOMPLETE)
@@ -82,25 +92,37 @@ internal object LegacyOpenAiFixture {
                 val imageRoot = File(root, "conversation_images_v1")
                 val archive = ConversationImages(imageRoot, ImageFileStore(File(root, "empty-library")))
                 val sentDirectory = File(imageRoot, PLAN_CHAT)
-                check(archive.thumbnail(PLAN_CHAT, SENT).contentEquals(File(sentDirectory, "$SENT-1-thumb.jpg").readBytes()))
-                val materialized = archive.prepare(PLAN_CHAT, emptyList(), localReplay)
+                val messageId = plan.snapshot.messages.first().id
+                check(archive.thumbnail(reopened, plan.key, messageId, SENT).contentEquals(File(sentDirectory, "$SENT-1-thumb.jpg").readBytes()))
+                val materialized = archive.prepare(reopened, plan, emptyList(), localReplay)
                 val imagePart = materialized.first().getValue("content").jsonArray[1].jsonObject
                 check(imagePart.getValue("type").jsonPrimitive.content == "input_image")
                 val url = imagePart.getValue("image_url").jsonPrimitive.content
                 check(url.startsWith("data:image/jpeg;base64,"))
                 check(Base64.getDecoder().decode(url.substringAfter(',')).contentEquals(File(sentDirectory, "$SENT-1-image.jpg").readBytes()))
-                expectUnavailable { archive.thumbnail(API_CHAT, SENT) }
+                expectUnavailable { archive.thumbnail(reopened, key(API_CHAT, apiScope), plan.snapshot.messages.first().id, SENT) }
+                for (foreign in listOf(plan.copy(owner = API), plan.copy(route = apiScope.mode.name),
+                    plan.copy(provider = "foreign"), plan.copy(replayFormat = "future"), plan.copy(model = "other"))) {
+                    check(reopened.load(foreign.key) == null)
+                    expectUnavailable { archive.thumbnail(reopened, foreign.key, messageId, SENT) }
+                    expectUnavailable { archive.prepare(reopened, foreign, emptyList(), localReplay) }
+                    expectStorageFailure { reopened.save(foreign) }
+                    expectStorageFailure { reopened.rename(foreign.key, foreign.revision, "Foreign rename") }
+                    expectStorageFailure { reopened.delete(foreign.key, foreign.revision) }
+                }
+                expectUnavailable { archive.thumbnail(reopened, plan.key, messageId + 1, SENT) }
+                expectUnavailable { archive.prepare(reopened, plan, emptyList(), localReplay.drop(1)) }
 
                 phase("read cancelled and failed API histories")
-                val api = checkNotNull(reopened.load(API_CHAT, API))
+                val api = checkNotNull(reopened.load(key(API_CHAT, apiScope)))
                 val apiChat = ChatConversation().apply { restore(api.snapshot) }
                 check(apiChat.state.stage == ChatStage.CANCELLED && apiChat.state.partial == "Excluded synthetic partial.")
                 val generation = checkNotNull(apiChat.state.messages[1].generated)
                 apiChat.draft("Continue the completed generation.")
                 val apiReplay = checkNotNull(apiChat.begin())
                 check(apiReplay.size == 3 && apiReplay[1] == Json.parseToJsonElement("""{"type":"image_generation_call","id":"ig_fixture_only"}"""))
-                val failed = reopened.list(API).single { it.title == "Synthetic failed chat" }
-                val failedChat = ChatConversation().apply { restore(checkNotNull(reopened.load(failed.id, API)).snapshot) }
+                val failed = reopened.list(apiScope).single { it.title == "Synthetic failed chat" }
+                val failedChat = ChatConversation().apply { restore(checkNotNull(reopened.load(failed.key)).snapshot) }
                 check(failedChat.state.stage == ChatStage.FAILED && failedChat.state.partial == "Uncommitted synthetic output.")
                 check(failedChat.configuration.controls.single().value == "low")
                 failedChat.draft("Retry explicitly with a new prompt.")
@@ -111,31 +133,52 @@ internal object LegacyOpenAiFixture {
                 val generated = GeneratedImages(generatedRoot)
                 val orphan = File(root, ORPHAN)
                 check(orphan.isFile)
+                val misplaced = File(generatedRoot, "$PLAN/$API_CHAT/${orphan.name}")
+                orphan.copyTo(misplaced)
+                val unknownScope = File(generatedRoot, "10000000-0000-4000-8000-000000000099/$API_CHAT/${orphan.name}")
+                orphan.copyTo(unknownScope)
                 generated.recover(reopened)
-                check(!orphan.exists())
-                val content = generated.content(API, API_CHAT, generation)
+                check(!orphan.exists() && misplaced.isFile && unknownScope.isFile)
+                check(misplaced.delete() && unknownScope.delete())
+                val content = generated.content(reopened, api.key, generation)
                 check(content.width == 64 && content.height == 64)
                 check(digest(content.image) == generation.sha256)
-                expectUnavailable { generated.content(PLAN, API_CHAT, generation) }
-                check(reopened.load(API_CHAT, API) == api && reopened.load(PLAN_CHAT, PLAN) == plan)
+                expectUnavailable { generated.content(reopened, api.key.copy(owner = PLAN), generation) }
+                expectUnavailable { generated.content(reopened, api.key.copy(route = planScope.mode.name), generation) }
+                expectUnavailable { generated.content(reopened, api.key.copy(provider = "foreign"), generation) }
+                expectUnavailable { generated.content(reopened, api.key, generation.copy(id = SENT)) }
+                check(reopened.load(key(API_CHAT, apiScope)) == api && reopened.load(key(PLAN_CHAT, planScope)) == plan)
                 check(attachmentDigests(root) == attachments - ORPHAN)
                 open(database).use { db -> check(db.version == 2 && contents(db) == original); checkMetadata(db) }
                 check(File(sentDirectory, "$SENT-1-thumb.jpg").delete())
-                expectUnavailable { archive.thumbnail(PLAN_CHAT, SENT) }
+                expectUnavailable { archive.thumbnail(reopened, plan.key, plan.snapshot.messages.first().id, SENT) }
 
                 phase("rename and delete migrated history under the original owner")
-                check(reopened.load(TOMBSTONE, PLAN) == null)
+                check(reopened.load(key(TOMBSTONE, planScope)) == null)
                 expectStorageFailure { reopened.save(plan.copy(id = TOMBSTONE, revision = 0)) }
-                expectStorageFailure { reopened.rename(failed.id, PLAN, failed.revision, "Wrong owner") }
-                expectStorageFailure { reopened.delete(failed.id, PLAN, failed.revision) }
+                expectStorageFailure { reopened.rename(failed.key.copy(owner = PLAN), failed.revision, "Wrong owner") }
+                expectStorageFailure { reopened.delete(failed.key.copy(owner = PLAN), failed.revision) }
                 expectStorageFailure { reopened.save(plan.copy(route = "OPENAI_API_KEY")) }
-                val oldFailed = checkNotNull(reopened.load(failed.id, API))
-                reopened.rename(failed.id, API, failed.revision, "Renamed synthetic chat")
+                val oldFailed = checkNotNull(reopened.load(failed.key))
+                reopened.rename(failed.key, failed.revision, "Renamed synthetic chat")
                 val renamed = oldFailed.copy(title = "Renamed synthetic chat", revision = failed.revision + 1)
-                check(reopened.load(failed.id, API) == renamed)
-                reopened.delete(failed.id, API, renamed.revision)
-                check(reopened.load(failed.id, API) == null && reopened.list(API).single().id == API_CHAT)
+                check(reopened.load(failed.key) == renamed)
+                expectStorageFailure { reopened.rename(failed.key, failed.revision, "Stale rename") }
+                expectStorageFailure { reopened.delete(failed.key, failed.revision) }
+                expectStorageFailure { reopened.save(oldFailed) }
+                reopened.delete(failed.key, renamed.revision)
+                check(reopened.load(failed.key) == null && reopened.list(apiScope).single().id == API_CHAT)
                 expectStorageFailure { reopened.save(renamed.copy(revision = 0)) }
+                reopened.delete(api.key, api.revision)
+                expectUnavailable { generated.content(reopened, api.key, generation) }
+                expectStorageFailure { reopened.requireReplayTarget(api) }
+                generated.delete(reopened, api.key)
+                check(!File(generatedRoot, "$API/$API_CHAT/${generation.id}-image.jpg").exists())
+                reopened.delete(plan.key, plan.revision)
+                expectUnavailable { archive.thumbnail(reopened, plan.key, messageId, SENT) }
+                check(sentDirectory.exists())
+                archive.recover(reopened) // Interruption after SQLite tombstone, before file removal.
+                check(!sentDirectory.exists())
             } finally {
                 reopened.close()
             }
@@ -152,7 +195,7 @@ internal object LegacyOpenAiFixture {
                     "BEGIN SELECT RAISE(ABORT, 'Synthetic migration failure'); END")
             }
             val interrupted = SqliteConversationStore(storeContext)
-            try { expectStorageFailure { interrupted.list(PLAN) } } finally { interrupted.close() }
+            try { expectStorageFailure { interrupted.list(planScope) } } finally { interrupted.close() }
             open(database, write = true).use { db ->
                 check(db.version == 1 && contents(db) == original)
                 check(rows(db, "PRAGMA table_info(conversations)").size == 11)
@@ -165,36 +208,106 @@ internal object LegacyOpenAiFixture {
             val unknown = open(database).use(::contents)
             val store = SqliteConversationStore(storeContext)
             try {
-                check(store.list(API).single().id == API_CHAT && store.list(PLAN).single().id == PLAN_CHAT)
-                expectStorageFailure { store.load(FAILED_CHAT, API) }
-                check(store.load(FAILED_CHAT, PLAN) == null)
+                check(store.list(apiScope).single().id == API_CHAT && store.list(planScope).single().id == PLAN_CHAT)
+                expectStorageFailure { store.load(key(FAILED_CHAT, apiScope).copy(provider = null, replayFormat = null)) }
+                check(store.load(key(FAILED_CHAT, apiScope).copy(owner = PLAN)) == null)
                 open(database).use { db ->
                     check(db.version == 2 && contents(db) == unknown)
                     checkMetadata(db, unknownRoute = true)
                 }
 
-                phase("reject incompatible metadata and preserve owned image files")
-                val api = checkNotNull(store.load(API_CHAT, API))
+                phase("display incompatible metadata read-only and preserve owned image files")
+                val api = checkNotNull(store.load(key(API_CHAT, apiScope)))
+                val generated = GeneratedImages(File(root, "generated_images_v1"))
+                val reference = api.snapshot.messages.flatMap { it.parts }.filterIsInstance<ContentPart.GeneratedImage>().single().reference
                 open(database, write = true).use { db ->
                     try {
                         db.execSQL("UPDATE conversations SET provider=NULL WHERE id=?", arrayOf(API_CHAT))
                         error("Accepted partial provider metadata")
                     } catch (_: SQLiteConstraintException) { }
                 }
-                for ((provider, format) in listOf("unknown-provider" to "openai_responses_v1",
-                    "openai" to "openai_responses_v99", null to null)) {
+                for (identity in listOf(api.key.copy(provider = "unknown-provider"),
+                    api.key.copy(replayFormat = "openai_responses_v99"), api.key.copy(route = "retired-route"),
+                    api.key.copy(provider = null, replayFormat = null))) {
                     open(database, write = true).use { db ->
-                        db.execSQL("UPDATE conversations SET provider=?, replay_format=? WHERE id=?", arrayOf(provider, format, API_CHAT))
+                        db.execSQL("UPDATE conversations SET provider=?, replay_format=?, route=? WHERE id=?",
+                            arrayOf(identity.provider, identity.replayFormat, identity.route, API_CHAT))
                     }
-                    check(store.list(API).isEmpty() && store.list(PLAN).single().id == PLAN_CHAT)
-                    check(store.load(API_CHAT, PLAN) == null)
-                    expectStorageFailure { store.load(API_CHAT, API) }
+                    if (identity.provider == null) {
+                        check(store.list(apiScope).isEmpty())
+                        expectStorageFailure { store.load(identity) }
+                    } else {
+                        val listed = store.list(apiScope).single()
+                        check(listed.key == identity)
+                        val historical = checkNotNull(store.load(listed.key))
+                        check(historical.key == identity && !historical.replayAvailable)
+                        check(historical.snapshot == api.snapshot.copy(replay = emptyList()))
+                        expectStorageFailure { store.requireReplayTarget(historical) }
+                        expectUnavailable { generated.content(store, historical.key, reference) }
+                    }
+                    check(store.load(key(API_CHAT, apiScope).copy(owner = PLAN)) == null)
+                    check(store.load(api.key) == null)
                     expectStorageFailure { store.save(api) }
-                    expectStorageFailure { store.rename(api.id, API, api.revision, "Invalid rename") }
-                    expectStorageFailure { store.delete(api.id, API, api.revision) }
-                    GeneratedImages(File(root, "generated_images_v1")).recover(store)
+                    expectStorageFailure { store.rename(api.key, api.revision, "Invalid rename") }
+                    expectStorageFailure { store.delete(api.key, api.revision) }
+                    generated.recover(store)
                     check(attachmentDigests(root) == attachments)
-                    open(database).use { db -> check(contents(db) == unknown) }
+                    open(database, write = true).use { db ->
+                        db.execSQL("UPDATE conversations SET provider=?, replay_format=?, route=? WHERE id=?",
+                            arrayOf(api.provider, api.replayFormat, api.route, API_CHAT))
+                        check(contents(db) == unknown)
+                    }
+                }
+
+                phase("independent display and conservative recovery with unreadable replay")
+                val originalReplay = open(database).use { db ->
+                    rows(db, "SELECT replay FROM conversations WHERE id='$API_CHAT'").single().single()
+                }
+                for (replay in listOf("{broken", "[".repeat(33) + "]".repeat(33), "[]", "x".repeat(1_048_577))) {
+                    open(database, write = true).use { db ->
+                        db.execSQL("UPDATE conversations SET replay=? WHERE id=?", arrayOf(replay, API_CHAT))
+                    }
+                    val historical = checkNotNull(store.load(api.key))
+                    check(!historical.replayAvailable && historical.snapshot == api.snapshot.copy(replay = emptyList()))
+                    expectStorageFailure { store.save(api) }
+                    expectStorageFailure { store.delete(api.key, api.revision) }
+                    generated.recover(store)
+                    check(attachmentDigests(root) == attachments)
+                }
+                phase("block explicit Send from unreadable replay through the actual session")
+                verifyReadOnlySession(store, api)
+                open(database, write = true).use { db ->
+                    db.execSQL("UPDATE conversations SET replay=? WHERE id=?", arrayOf(originalReplay, API_CHAT))
+                }
+                check(store.load(api.key) == api)
+
+                phase("reject corrupt, oversized, future and replay-bearing display")
+                val originalDisplay = open(database).use { db ->
+                    rows(db, "SELECT display FROM conversations WHERE id='$API_CHAT'").single().single()
+                }
+                for (display in listOf("{broken", "x".repeat(1_048_577),
+                    originalDisplay.replace("\"version\":4", "\"version\":99"),
+                    originalDisplay.replace("\"replay\":[]", "\"replay\":[{}]"))) {
+                    check(display != originalDisplay)
+                    open(database, write = true).use { db ->
+                        db.execSQL("UPDATE conversations SET display=? WHERE id=?", arrayOf(display, API_CHAT))
+                    }
+                    expectStorageFailure { store.load(api.key) }
+                    generated.recover(store)
+                    check(attachmentDigests(root) == attachments)
+                }
+                open(database, write = true).use { db ->
+                    db.execSQL("UPDATE conversations SET display=? WHERE id=?", arrayOf(originalDisplay, API_CHAT))
+                }
+                check(store.load(api.key) == api)
+                open(database, write = true).use { db ->
+                    db.execSQL("UPDATE conversations SET deleted=1 WHERE id=?", arrayOf(API_CHAT))
+                }
+                check(store.load(api.key) == null && !store.isDeleted(api.key))
+                generated.recover(store)
+                check(attachmentDigests(root) == attachments)
+                open(database, write = true).use { db ->
+                    db.execSQL("UPDATE conversations SET deleted=0 WHERE id=?", arrayOf(API_CHAT))
                 }
             } finally { store.close() }
 
@@ -213,6 +326,39 @@ internal object LegacyOpenAiFixture {
     private fun open(database: File, write: Boolean = false): SQLiteDatabase = SQLiteDatabase.openDatabase(
         database.path, null, if (write) SQLiteDatabase.OPEN_READWRITE else SQLiteDatabase.OPEN_READONLY,
     )
+
+    private suspend fun verifyReadOnlySession(store: ConversationStore, original: ConversationEntry) {
+        val mode = CredentialMode.OPENAI_API_KEY
+        val lease = CredentialLease("synthetic", 0, "", Long.MAX_VALUE, mode)
+        val identityHash = digest("40000000-0000-4000-8000-000000000002".encodeToByteArray())
+        var dispatched = false
+        val provider = object : AiProvider {
+            override suspend fun models(credential: CredentialLease) = listOf(AiModel(original.model, "Synthetic"))
+            override suspend fun stream(credential: CredentialLease, model: String, onEvent: suspend (ResponseEvent) -> Unit) {
+                dispatched = true
+            }
+            override suspend fun stream(credential: CredentialLease, model: String, input: List<JsonObject>,
+                onEvent: suspend (ResponseEvent) -> Unit) {
+                dispatched = true
+            }
+        }
+        val vm = withContext(Dispatchers.Main) {
+            InferenceViewModel(MutableStateFlow(InferenceAccessState(mode, lease.clientId, usable = true)),
+                InferenceSession({ lease }, provider) { it === lease }, conversationStore = store,
+                conversationIdentity = { identityHash }, localConversationIdentity = { identityHash })
+        }
+        try {
+            withTimeout(10_000) { vm.state.first { it.stage == ProofStage.READY } }
+            withContext(Dispatchers.Main) {
+                check(vm.chat.value.readOnlyReason != null && vm.chat.value.messages.size == original.snapshot.messages.size)
+                vm.draft("Forbidden follow-up")
+                vm.send()
+                vm.generateImage()
+                check(!dispatched && vm.chat.value.draft.isEmpty() && !vm.chat.value.busy)
+            }
+            check(checkNotNull(store.load(original.key)).revision == original.revision)
+        } finally { vm.viewModelScope.coroutineContext.job.cancelAndJoin() }
+    }
 
     private fun rows(db: SQLiteDatabase, sql: String) = db.rawQuery(sql, null).use { cursor ->
         buildList { while (cursor.moveToNext()) add(List(cursor.columnCount, cursor::getString)) }

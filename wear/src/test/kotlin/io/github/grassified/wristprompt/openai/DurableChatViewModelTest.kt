@@ -17,7 +17,7 @@ class DurableChatViewModelTest {
     private var vm: InferenceViewModel? = null
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun cleanup() { vm?.viewModelScope?.cancel(); Dispatchers.resetMain() }
-    private class Store : ConversationStore {
+    private class Store : TestConversationStore() {
         val owner = UUID.randomUUID().toString()
         val writes = mutableListOf<ConversationEntry>()
         var failAt = -1
@@ -28,10 +28,10 @@ class DurableChatViewModelTest {
             if (writes.size == failAt) throw ConversationStorageException()
             return entry.copy(revision = entry.revision + 1).also { writes += it }
         }
-        override suspend fun load(id: String, owner: String): ConversationEntry? = null
-        override suspend fun list(owner: String) = emptyList<ConversationSummary>()
-        override suspend fun delete(id: String, owner: String, revision: Long) = error("unused")
-        override suspend fun rename(id: String, owner: String, revision: Long, title: String) = error("unused")
+        override suspend fun load(key: ConversationKey): ConversationEntry? = null
+        override suspend fun list(scope: HistoryScope) = emptyList<ConversationSummary>()
+        override suspend fun delete(key: ConversationKey, revision: Long) = error("unused")
+        override suspend fun rename(key: ConversationKey, revision: Long, title: String) = error("unused")
     }
     private class Provider : AiProvider {
         var requests = 0

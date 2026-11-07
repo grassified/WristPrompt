@@ -268,8 +268,13 @@ private fun PrimaryControl(
     val action = primaryAction(surface, state.busy || chatBusy, welcome) ?: return
     val recoverySource = remember(proof) { proof.chat.map { if (it.limitReached) RecoveryAction.NEW_CHAT else chatError(it)?.action }.distinctUntilChanged() to chatError(proof.chat.value)?.action }
     val chatRecovery by recoverySource.first.collectAsStateWithLifecycle(initialValue = recoverySource.second)
+    val readOnlySource = remember(proof) {
+        proof.chat.map { it.readOnlyReason != null }.distinctUntilChanged() to (proof.chat.value.readOnlyReason != null)
+    }
+    val readOnly by readOnlySource.first.collectAsStateWithLifecycle(initialValue = readOnlySource.second)
     val recovery = if (surface == Surface.CHAT && action == PrimaryAction.ASK)
-        ui.recovery?.action ?: chatRecovery ?: if (state.selectedSlug == null) modelCatalogPresentation(state)?.action else null
+        if (readOnly) RecoveryAction.NEW_CHAT
+        else ui.recovery?.action ?: chatRecovery ?: if (state.selectedSlug == null) modelCatalogPresentation(state)?.action else null
         else null
     val canSend = if (action == PrimaryAction.SEND) {
         val sendSource = remember(proof) { proof.chat.map { it.canSend }.distinctUntilChanged() to proof.chat.value.canSend }

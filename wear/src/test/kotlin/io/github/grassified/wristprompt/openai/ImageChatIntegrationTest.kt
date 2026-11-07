@@ -32,10 +32,12 @@ class ImageChatIntegrationTest {
         models.forEach { it.viewModelScope.coroutineContext[Job]!!.cancelAndJoin() }
         Dispatchers.resetMain(); main.close(); directory.deleteRecursively(); Unit
     }
-    private class Store : ConversationStore {
+    private class Store : TestConversationStore() {
         val scope = UUID.randomUUID().toString()
         val entries = linkedMapOf<String, ConversationEntry>()
         var writes = 0; var failAt = -1
+        private val deleted = mutableSetOf<ConversationKey>()
+        override suspend fun isDeleted(key: ConversationKey) = key in deleted
         override suspend fun owner(identityHash: String) = scope
         override suspend fun save(entry: ConversationEntry): ConversationEntry {
             if (writes == failAt) throw ConversationStorageException()
@@ -44,12 +46,12 @@ class ImageChatIntegrationTest {
                 writes++; entries[it.id] = it
             }
         }
-        override suspend fun load(id: String, owner: String) = entries[id]?.takeIf { it.owner == owner }
-        override suspend fun list(owner: String) = entries.values.filter { it.owner == owner }.map {
-            ConversationSummary(it.id, it.title, it.model, it.route, it.updated, it.revision)
+        override suspend fun load(key: ConversationKey) = entries[key.id]?.takeIf { it.key == key }
+        override suspend fun list(scope: HistoryScope) = entries.values.filter { scope.canView(it.key) }.map {
+            it.summary()
         }
-        override suspend fun delete(id: String, owner: String, revision: Long) { check(entries[id]?.owner == owner); entries.remove(id) }
-        override suspend fun rename(id: String, owner: String, revision: Long, title: String) { error("unused") }
+        override suspend fun delete(key: ConversationKey, revision: Long) { check(entries[key.id]?.key == key); entries.remove(key.id); deleted.add(key) }
+        override suspend fun rename(key: ConversationKey, revision: Long, title: String) { error("unused") }
     }
     private class Provider(var slug: String = "gpt-6.1-sol") : AiProvider {
         val inputs = java.util.concurrent.CopyOnWriteArrayList<List<JsonObject>>()

@@ -24,11 +24,21 @@ class ImageGenerationPipelineTest {
     private val mode = CredentialMode.OPENAI_API_KEY
     private val access = MutableStateFlow(InferenceAccessState(client = "synthetic", usable = true, mode = mode))
     private val lease = CredentialLease("synthetic", 0, "synthetic", Long.MAX_VALUE, mode)
-    private class Store : ConversationStore {
+    private class Store : TestConversationStore() {
         val scope = ImageLimits.newId()
         var entry: ConversationEntry? = null
         var saves = 0
         var unreadable = false
+        private var deleted: ConversationKey? = null
+        override suspend fun isDeleted(key: ConversationKey) = deleted == key
+        override suspend fun generatedFilesForRecovery(id: String, owner: String): Set<String>? {
+            if (unreadable) throw ConversationStorageException()
+            val saved = entry ?: return emptySet()
+            if (saved.id != id) return emptySet()
+            if (saved.owner != owner || !saved.key.supportsReplay || !saved.replayAvailable) return null
+            return saved.snapshot.messages.flatMap { it.parts.filterIsInstance<ContentPart.GeneratedImage>() }
+                .flatMap { listOf("${it.reference.id}-image.jpg", "${it.reference.id}-thumb.jpg") }.toSet()
+        }
         var completing: (suspend () -> Unit)? = null
         override suspend fun owner(identityHash: String) = scope
         override suspend fun save(entry: ConversationEntry): ConversationEntry {
@@ -36,15 +46,15 @@ class ImageGenerationPipelineTest {
             entry.snapshot.validate(); saves++
             return entry.copy(revision = entry.revision + 1).also { this.entry = it }
         }
-        override suspend fun load(id: String, owner: String): ConversationEntry? {
+        override suspend fun load(key: ConversationKey): ConversationEntry? {
             if (unreadable) throw ConversationStorageException()
-            return entry?.takeIf { it.id == id && it.owner == owner }
+            return entry?.takeIf { it.key == key }
         }
-        override suspend fun list(owner: String) = listOfNotNull(entry?.takeIf { it.owner == owner }?.let {
-            ConversationSummary(it.id, it.title, it.model, it.route, it.updated, it.revision)
+        override suspend fun list(scope: HistoryScope) = listOfNotNull(entry?.takeIf { scope.canView(it.key) }?.let {
+            it.summary()
         })
-        override suspend fun delete(id: String, owner: String, revision: Long) { check(entry?.id == id); entry = null }
-        override suspend fun rename(id: String, owner: String, revision: Long, title: String) = error("unused")
+        override suspend fun delete(key: ConversationKey, revision: Long) { check(entry?.key == key); deleted = key; entry = null }
+        override suspend fun rename(key: ConversationKey, revision: Long, title: String) = error("unused")
     }
     private class Provider : AiProvider {
         var images = 0; var texts = 0
@@ -92,7 +102,7 @@ class ImageGenerationPipelineTest {
         assertEquals(1, p.images); assertEquals(ChatStage.COMPLETED, vm.chat.value.stage)
         assertEquals("medium", vm.state.value.configuration.controls.single().value)
         val saved = checkNotNull(store.entry); val ref = checkNotNull(vm.chat.value.messages.last().generated)
-        assertArrayEquals(content.image, files.content(saved.owner, saved.id, ref).image)
+        assertArrayEquals(content.image, files.content(store, saved.key, ref).image)
         val (body, replay) = ConversationCodec.encode(saved)
         assertTrue(body.contains("GeneratedImage")); assertFalse(body.contains("AQID")); assertFalse(replay.contains("result"))
         val restored = ChatConversation().apply { restore(ConversationCodec.decode(body, replay)) }
@@ -101,7 +111,7 @@ class ImageGenerationPipelineTest {
         val imported = library.importBatch(1) { content }.records.single()
         library.delete(imported.id) // Imported ownership cannot reach generated files.
         files.recover(store)
-        assertArrayEquals(content.image, files.content(saved.owner, saved.id, ref).image)
+        assertArrayEquals(content.image, files.content(store, saved.key, ref).image)
         vm.draft("explicit follow-up"); vm.send(); vm.done()
         assertEquals(1, p.images); assertEquals(1, p.texts)
         assertEquals("medium", p.configurations.single().controls.single().value)
@@ -186,7 +196,7 @@ class ImageGenerationPipelineTest {
         val entry = ConversationEntry(owner = store.scope, route = mode.name, model = "gpt-6.1-sol", title = "Synthetic",
             updated = 0, snapshot = chat.snapshot())
         val prepared = files.prepare(GeneratedOutput(byteArrayOf(1)))
-        try { files.commit(entry, prepared) { throw ConversationStorageException() }; fail("Expected failed save") }
+        try { files.commit(store, entry, prepared) { throw ConversationStorageException() }; fail("Expected failed save") }
         catch (_: ConversationStorageException) { }
         val directory = File(File(root, entry.owner), entry.id)
         val unknown = File(directory, "unknown.keep").apply { writeText("synthetic sentinel") }
@@ -207,7 +217,7 @@ class ImageGenerationPipelineTest {
         image.writeBytes(byteArrayOf(9, 9, 9))
         for (missing in listOf(false, true)) {
             if (missing) check(image.delete())
-            try { files.content(entry.owner, entry.id, reference); fail("Expected unavailable image") }
+            try { files.content(store, entry.key, reference); fail("Expected unavailable image") }
             catch (failure: ApiFailure) { assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem) }
         }
         files.recover(store)
@@ -222,7 +232,7 @@ class ImageGenerationPipelineTest {
         val entry = ConversationEntry(owner = store.scope, route = mode.name, model = "gpt-6.1-sol", title = "Synthetic",
             updated = 0, snapshot = chat.snapshot())
         var saved = false
-        try { files.commit(entry, files.prepare(GeneratedOutput(byteArrayOf(1)))) { saved = true }; fail("Expected capacity rejection") }
+        try { files.commit(store, entry, files.prepare(GeneratedOutput(byteArrayOf(1)))) { saved = true }; fail("Expected capacity rejection") }
         catch (_: ConversationStorageException) { }
         assertFalse(saved); assertEquals(GeneratedImages.MAX_TOTAL_BYTES, existing.length())
     }

@@ -27,6 +27,11 @@ import kotlinx.serialization.json.*
 ) {
     override fun toString() = SafeDiagnostics.REDACTED
     fun validate() {
+        validateDisplay()
+        validateReplay()
+    }
+    internal val completedExchanges get() = messages.count { it.role == "USER" && it.status == "COMPLETED" }
+    internal fun validateDisplay() {
         require(version in 1..4 && attempts in 0..ChatConversation.MAX_ATTEMPTS && nextId in 0..(Long.MAX_VALUE - 48))
         configuration.validate()
         require(version != 1 || configuration.controls.isEmpty())
@@ -53,13 +58,17 @@ import kotlinx.serialization.json.*
         }
         require(terminal in ChatStage.entries.map { it.name })
         require(partial.length <= ResponsesProtocol.MAX_TEXT_CHARS)
-        require(JsonArray(replay).toString().encodeToByteArray().size <= MAX_REPLAY_BYTES)
-        // Every completed display pair must have exactly one complete replay exchange.
         val completed = messages.filter { it.status == "COMPLETED" }
         require(completed.size % 2 == 0)
         require(completed.chunked(2).all { it[0].role == "USER" && it[1].role == "ASSISTANT" })
         val pending = messages.filter { it.status == "PENDING" }
         require(pending.size <= 1 && pending.all { it.role == "USER" && it == messages.last() })
+        require(attempts >= messages.count { it.role == "USER" })
+    }
+    internal fun validateReplay() {
+        require(JsonArray(replay).toString().encodeToByteArray().size <= MAX_REPLAY_BYTES)
+        // Every completed display pair must have exactly one complete replay exchange.
+        val completed = messages.filter { it.status == "COMPLETED" }
         var users = 0
         var hasAssistant = false
         val generatedCalls = mutableListOf<Int>()
@@ -88,7 +97,6 @@ import kotlinx.serialization.json.*
         }
         val callIds = replay.filter { it["type"]?.jsonPrimitive?.content == "image_generation_call" }.map { it["id"] }
         require(callIds.distinct().size == callIds.size)
-        require(attempts >= messages.count { it.role == "USER" })
     }
     companion object { const val MAX_REPLAY_BYTES = ChatConversation.MAX_CONTEXT_BYTES + ResponsesProtocol.MAX_BODY_BYTES }
 }

@@ -72,7 +72,9 @@ internal fun ChatScreen(
         else add("chat-header")
         if (showSetup) add("chat-unavailable")
         if (readOnlyReason != null) add("chat-readonly")
-        if (presentation.rows.isEmpty()) add("chat-empty") else addAll(presentation.rows.map { it.key })
+        if (presentation.rows.isEmpty()) {
+            if (readOnlyReason == null) add("chat-empty")
+        } else addAll(presentation.rows.map { it.key })
     }
     val scroll = rememberChatScroll(navigation, keys)
     val latest by remember(presentation.rows, scroll) {
@@ -104,7 +106,7 @@ internal fun ChatScreen(
         }
         readOnlyReason?.let { reason -> item(key = "chat-readonly", contentType = "status") { ShellText(reason) } }
         if (presentation.rows.isEmpty()) {
-            item(key = "chat-empty", contentType = "status") { ShellText("Ask anything") }
+            if (readOnlyReason == null) item(key = "chat-empty", contentType = "status") { ShellText("Ask anything") }
         } else chatItems(presentation, proof, { inspected = it }, { imageId = it.id })
         supplementalGuidance?.let { text ->
             item(key = "chat-guidance", contentType = "recovery") { ShellText(text) }

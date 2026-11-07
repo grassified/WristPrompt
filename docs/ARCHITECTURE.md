@@ -97,16 +97,29 @@ SQLite schema v2 adds `provider` and `replay_format` to each conversation. The
 v1 upgrade uses the `SQLiteOpenHelper` transaction to tag `CHATGPT_PLAN` and
 `OPENAI_API_KEY` as `openai` with `openai_responses_v1`. Original columns and
 attachment paths stay intact. New OpenAI rows receive the same metadata. Unknown
-legacy routes retain both columns as NULL. Rows with incompatible route or replay
-metadata stay out of normal history and reject direct loads and writes. Failed
-loads also keep attachment recovery from treating unreadable chats as deleted.
-The legacy v1 app cannot open a v2 database. See the [frozen upgrade fixture](../wear/src/androidTest/fixtures/README.md).
+legacy routes retain both columns as NULL and stay quarantined. History uses the
+verified local owner and selected billing route. An owner can open a validated
+display snapshot with unsupported provider or replay metadata, a retired route,
+or unreadable replay. This view is read-only and offers an explicit empty New
+Chat. A corrupt or incompatible display stays on disk and cannot be opened.
+
+OpenAI continuation checks the exact conversation, provider, route, owner,
+replay format and model against the current credential and catalog. A revision
+checked SQLite checkpoint must succeed before dispatch. Only completed replay
+enters the request. Writes preserve the same identity, quotas and tombstones.
+The legacy v1 app cannot open a v2 database. See the
+[frozen upgrade fixture](../wear/src/androidTest/fixtures/README.md).
 
 D7 adds phone-managed presets and a private imported-photo library synchronized
 through bounded Data Layer protocols. Sent attachments and generated images have
-conversation-owned private files and durable metadata. Missing files fail clearly;
-cleanup cannot silently substitute library content. Image generation shares the
-existing inference/Stop/completion owner, with API-key-only capability gating.
+conversation-owned private files and durable metadata. Archive reads verify the
+full stored identity and attachment reference. Replay materialization also verifies
+the saved revision and replay prefix. Missing copies fail without substituting
+library content. Archive deletion requires the matching tombstone. Generated-image
+recovery checks the UUID across all owners and preserves files when the row,
+metadata or replay is uncertain. Sent recovery removes archives only when it can
+prove an explicit deletion. Image generation shares the existing inference, Stop and
+completion owner, with API-key-only capability gating.
 See [D7_D_IMAGE_INPUT.md](D7_D_IMAGE_INPUT.md) and
 [D7_F_IMAGE_GENERATION.md](D7_F_IMAGE_GENERATION.md).
 

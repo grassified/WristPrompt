@@ -45,23 +45,26 @@ class ChatConversation {
 
 
     /** Process restoration is inert: pending work becomes excluded, never resumed. */
-    fun restore(snapshot: ConversationSnapshot) {
-        snapshot.validate()
+    fun restore(snapshot: ConversationSnapshot, readOnlyReason: String? = null, replayAvailable: Boolean = true) {
+        snapshot.validateDisplay()
+        if (replayAvailable) snapshot.validateReplay()
+        else require(readOnlyReason != null && snapshot.replay.isEmpty())
         val interrupted = snapshot.messages.any { it.status == "PENDING" }
         val restored = snapshot.messages.map { m -> ChatMessage(m.id, ChatRole.valueOf(m.role),
             m.parts.filterIsInstance<ContentPart.Text>().joinToString("") { it.text },
             if (m.status == "PENDING") ChatMessageStatus.EXCLUDED else ChatMessageStatus.valueOf(m.status), m.parts.filterIsInstance<ContentPart.ImageAttachment>().map { it.attachmentId }, m.parts.filterIsInstance<ContentPart.GeneratedImage>().singleOrNull()?.reference) }
         configuration = snapshot.configuration
-        history = snapshot.replay.toList(); attempts = snapshot.attempts; nextId = snapshot.nextId
+        history = snapshot.replay.toList()
+        attempts = snapshot.attempts; nextId = snapshot.nextId
         pending = null; pendingUserId = null
         state = ChatState(messages = restored,
             stage = if (interrupted) ChatStage.FAILED else if (snapshot.terminal in setOf("FAILED", "CANCELLED")) ChatStage.valueOf(snapshot.terminal)
                 else if (restored.isEmpty()) ChatStage.EMPTY else ChatStage.COMPLETED,
             partial = snapshot.partial, problem = ApiProblem.INCOMPLETE.takeIf { interrupted },
-            limitReached = attempts >= MAX_ATTEMPTS || size(history) > MAX_CONTEXT_BYTES)
+            limitReached = attempts >= MAX_ATTEMPTS || size(history) > MAX_CONTEXT_BYTES, readOnlyReason = readOnlyReason)
     }
     fun draft(text: String) {
-        if (!state.busy) state = state.copy(draft = text, stage = ChatStage.COMPOSING, problem = null)
+        if (!state.busy && state.readOnlyReason == null) state = state.copy(draft = text, stage = ChatStage.COMPOSING, problem = null)
     }
     fun preview(attachments: List<String> = emptyList()): List<JsonObject> = history + ImageInput.user(state.draft, attachments)
     fun begin(attachments: List<String> = emptyList()): List<JsonObject>? {

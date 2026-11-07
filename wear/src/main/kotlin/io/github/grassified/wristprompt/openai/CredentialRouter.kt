@@ -63,7 +63,12 @@ class CredentialRouter(
         require(state.value == access && access.usable)
         val identity = when (access.mode) {
             CredentialMode.CHATGPT_PLAN -> profiles.localConversationIdentity(checkNotNull(access.client), access.generation)
-            CredentialMode.OPENAI_API_KEY -> keys.conversationIdentity(keys.credential())
+            CredentialMode.OPENAI_API_KEY -> {
+                val lease = keys.credential()
+                require(lease.clientId == access.client && lease.generation == access.generation &&
+                    lease.mode == access.mode && lease.modeRevision == access.modeRevision)
+                keys.conversationIdentity(lease)
+            }
         }
         require(state.value == access)
         return identity

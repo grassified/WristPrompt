@@ -53,7 +53,8 @@ class InferenceViewModel(
     // Main-confined ownership: Stop may cancel preparation/streaming, never an owned commit.
     private var completionOwner: Long? = null
     private var cleared = false
-    private var ownerScope: String? = null
+    private var historyScope: HistoryScope? = null
+    private var catalogScope: HistoryScope? = null
     private var writer: ConversationWriter? = null
     private val mutableHistory = MutableStateFlow(ConversationHistory())
     val history = mutableHistory.asStateFlow()
@@ -64,7 +65,8 @@ class InferenceViewModel(
                 observedAccess = account
                 cancelOperation()
                 prepared = null
-                ownerScope = null
+                historyScope = null
+                catalogScope = null
                 mutableHistory.value = ConversationHistory()
                 clearChat()
                 mutableState.value = ProofState(problem = account.problem, mode = account.mode)
@@ -139,9 +141,11 @@ class InferenceViewModel(
     private suspend fun saveConfigurationCheckpoint(catalog: PreparedCatalog, selected: String,
         configuration: InferenceConfiguration = conversation.configuration) {
         val store = conversationStore ?: return
-        val activeWriter = writer ?: ConversationWriter(store, ConversationEntry(owner = ownerScope ?: throw ConversationStorageException(),
+        val scope = catalogScope ?: throw ConversationStorageException()
+        val activeWriter = writer ?: ConversationWriter(store, ConversationEntry(owner = scope.owner,
             route = catalog.credential.mode.name, model = selected, title = "Chat", updated = System.currentTimeMillis(),
             snapshot = conversation.snapshot())).also { writer = it }
+        if (!canContinue(activeWriter.entry, catalog, selected)) throw ConversationStorageException()
         activeWriter.write(conversation.snapshot().copy(configuration = configuration))
     }
     private fun thinkingValidationNotice(catalog: PreparedCatalog, selected: String): String? = try {
@@ -155,6 +159,8 @@ class InferenceViewModel(
         val priorConfiguration = conversation.configuration
         val run = ++epoch
         prepared = null
+        catalogScope = null
+        writer?.entry?.let { conversation.readOnly(readOnlyReason(it, false)); publishChat() }
         mutableState.value = ProofState(stage = ProofStage.LOADING, mode = state.value.mode, configuration = conversation.configuration)
         launchOperation {
             try {
@@ -162,7 +168,7 @@ class InferenceViewModel(
                     val access = accounts.value
                     val localOwner = conversationStore.owner(localConversationIdentity.invoke(access))
                     if (run != epoch || accounts.value != access) return@launchOperation
-                    resolveHistory(localOwner, run)
+                    resolveHistory(HistoryScope(localOwner, access.mode), run)
                 }
                 val catalog = session.catalog()
                 if (run != epoch) return@launchOperation
@@ -174,18 +180,23 @@ class InferenceViewModel(
                 val restored = catalog.models.firstOrNull { it.slug == saved }?.slug ?: catalog.models.first().slug
                 val owner = conversationStore?.owner(conversationIdentity(catalog.credential))
                 if (run != epoch || !compatible(catalog)) return@launchOperation
-                ownerScope = owner
-                if (owner != null) resolveHistory(owner, run)
-                if (priorModel != null && priorModel != restored) clearChat()
+                val verifiedScope = owner?.let { HistoryScope(it, catalog.credential.mode) }
+                if (historyScope != null && historyScope != verifiedScope) {
+                    clearChat()
+                    mutableHistory.value = ConversationHistory()
+                }
+                catalogScope = verifiedScope
+                if (verifiedScope != null) resolveHistory(verifiedScope, run)
+                if (run != epoch || !compatible(catalog)) return@launchOperation
+                if (writer == null && priorModel != null && priorModel != restored) clearChat()
+                writer?.entry?.let {
+                    conversation.readOnly(readOnlyReason(it, canContinue(it, catalog, restored)))
+                    publishChat()
+                }
                 mutableState.value = ProofState(ProofStage.READY, catalog.models,
                     restored, mode = catalog.credential.mode, configuration = conversation.configuration,
                     thinkingNotice = if (priorModel != null && priorModel != restored && priorConfiguration.controls.isNotEmpty())
                         "Thinking level reset to Default for this model." else thinkingValidationNotice(catalog, restored))
-                writer?.entry?.let { entry ->
-                    conversation.readOnly(if (entry.owner == owner && entry.model == restored && entry.route == catalog.credential.mode.name) null
-                        else "Read-only chat. Select its original model and reopen it, or start a new chat.")
-                    publishChat()
-                }
             } catch (cancelled: CancellationException) { cancelled(run); throw cancelled
             } catch (failure: Exception) { failed(run, failure) }
         }
@@ -227,9 +238,9 @@ class InferenceViewModel(
         if (state.value.busy) mutableState.value = state.value.copy(stage = ProofStage.CANCELLED)
     }
     // Input results are accepted only for the context that launched the platform composer.
-    fun inputToken(): Long? = inputRevision.takeIf { !cleared && accounts.value == observedAccess && !state.value.busy && !chat.value.busy }
+    fun inputToken(): Long? = inputRevision.takeIf { !cleared && accounts.value == observedAccess && !state.value.busy && !chat.value.busy && chat.value.readOnlyReason == null }
     fun draft(text: String, token: Long = inputRevision) {
-        if (cleared || token != inputRevision || state.value.busy || chat.value.busy) return
+        if (inputToken() != token) return
         if (contextModel == null) contextModel = state.value.selectedSlug
         conversation.draft(text); publishChat()
     }
@@ -268,24 +279,41 @@ class InferenceViewModel(
         clearChat()
         if (state.value.busy) mutableState.value = state.value.copy(stage = ProofStage.CANCELLED)
     }
-    private suspend fun resolveHistory(owner: String, run: Long) {
+    private fun canContinue(entry: ConversationEntry, catalog: PreparedCatalog?, model: String?) =
+        catalog != null && compatible(catalog) && model != null && catalog.models.any { it.slug == model } &&
+            entry.replayAvailable && catalogScope?.canContinue(entry.key, model) == true
+
+    private fun readOnlyReason(entry: ConversationEntry, canContinue: Boolean): String? = when {
+        canContinue -> null
+        !entry.replayAvailable || !entry.key.supportsReplay -> "Read-only chat. Its saved replay is unavailable."
+        else -> "Read-only chat. Select its original model and reopen it to continue."
+    }
+
+    private fun restoreEntry(entry: ConversationEntry, catalog: PreparedCatalog?, model: String?) {
+        conversation.restore(entry.snapshot, readOnlyReason(entry, canContinue(entry, catalog, model)), entry.replayAvailable)
+        publishChat()
+    }
+
+    private suspend fun resolveHistory(scope: HistoryScope, run: Long) {
         val store = conversationStore ?: return
         writer?.awaitIdle()
-        val entries = store.list(owner)
-        if (run != epoch) return
-        ownerScope = owner
+        val entries = store.list(scope).filter { scope.canView(it.key) }
+        if (run != epoch || accounts.value != observedAccess) return
+        historyScope = scope
         mutableHistory.value = ConversationHistory(entries)
         if (restoreOnStartup) {
             restoreOnStartup = false
-            val latest = entries.firstOrNull()?.let { store.load(it.id, owner) }
-            if (run != epoch || ownerScope != owner) return
+            val latest = try { entries.firstOrNull()?.let { store.load(it.key) } }
+            catch (failure: ConversationStorageException) {
+                if (run == epoch) mutableHistory.value = history.value.copy(error = "Saved chat could not be opened.")
+                null
+            }
+            if (run != epoch || historyScope != scope || accounts.value != observedAccess) return
             if (latest != null) {
                 mutableSentImageScope.value++
-                conversation.restore(latest.snapshot)
-                conversation.readOnly("Stored chat. Load its original model to continue, or start a new chat.")
                 writer = ConversationWriter(store, latest)
+                restoreEntry(latest, null, null)
                 mutableState.value = state.value.copy(configuration = conversation.configuration)
-                publishChat()
             }
         }
     }
@@ -293,36 +321,39 @@ class InferenceViewModel(
         if (chat.value.busy || operation?.isActive == true) {
             mutableHistory.value = history.value.copy(error = "Finish or stop the current operation first."); return
         }
-        val owner = ownerScope ?: return
+        val scope = historyScope ?: return
         val run = epoch
         mutableHistory.value = history.value.copy(loading = true, error = null)
         launchOperation {
-            try { resolveHistory(owner, run) }
+            try { resolveHistory(scope, run) }
             catch (_: Exception) { if (run == epoch) mutableHistory.value = history.value.copy(loading = false, error = "Chats could not be loaded. Saved data has not been reset.") }
         }
     }
+    private fun visibleKey(id: String, scope: HistoryScope): ConversationKey? =
+        (writer?.entry?.key?.takeIf { it.id == id }
+            ?: history.value.entries.firstOrNull { it.id == id }?.key)?.takeIf(scope::canView)
+
     fun openChat(id: String, onOpened: () -> Unit = {}) {
         if (chat.value.busy || operation?.isActive == true || cleared) return
         val store = conversationStore ?: return
-        val owner = ownerScope ?: return
+        val scope = historyScope ?: return
+        val key = visibleKey(id, scope) ?: return
         val run = ++epoch
         inputRevision++; restoreOnStartup = false
         mutableHistory.value = history.value.copy(loading = true, error = null)
         launchOperation {
             try {
                 writer?.awaitIdle()
-                val entry = store.load(id, owner) ?: throw ConversationStorageException()
-                if (run != epoch || ownerScope != owner || accounts.value != observedAccess) return@launchOperation
+                val entry = store.load(key) ?: throw ConversationStorageException()
+                if (run != epoch || historyScope != scope || accounts.value != observedAccess) return@launchOperation
                 imageSelection.clear()
                 mutableSentImageScope.value++
-                conversation.restore(entry.snapshot)
                 val current = prepared?.takeIf(::compatible)
-                val canContinue = current != null && entry.route == current.credential.mode.name && entry.model == state.value.selectedSlug
-                conversation.readOnly(if (canContinue) null else "Read-only chat. Select its original model and reopen it, or start a new chat.")
                 writer = ConversationWriter(store, entry); contextModel = entry.model
+                restoreEntry(entry, current, state.value.selectedSlug)
                 mutableState.value = state.value.copy(configuration = conversation.configuration,
                     thinkingNotice = current?.let { thinkingValidationNotice(it, entry.model) })
-                publishChat(); mutableHistory.value = history.value.copy(loading = false, error = null)
+                mutableHistory.value = history.value.copy(loading = false, error = null)
                 onOpened()
             } catch (_: Exception) { if (run == epoch) mutableHistory.value = history.value.copy(loading = false, error = "Chat could not be opened. Saved data has not been reset.") }
         }
@@ -332,24 +363,25 @@ class InferenceViewModel(
     private fun editHistory(id: String, title: String?) {
         if (chat.value.busy || operation?.isActive == true || cleared) return
         val store = conversationStore ?: return
-        val owner = ownerScope ?: return
+        val scope = historyScope ?: return
+        val key = visibleKey(id, scope) ?: return
         val run = ++epoch
         mutableHistory.value = history.value.copy(loading = true, error = null)
         launchOperation {
             try {
                 writer?.awaitIdle()
-                val entry = store.load(id, owner) ?: throw ConversationStorageException()
-                if (run != epoch || ownerScope != owner || accounts.value != observedAccess) return@launchOperation
+                val entry = store.load(key) ?: throw ConversationStorageException()
+                if (run != epoch || historyScope != scope || accounts.value != observedAccess) return@launchOperation
                 if (title == null) {
-                    store.delete(id, owner, entry.revision)
-                    conversationImages?.delete(id); generatedImages?.delete(owner, id)
-                    if (run == epoch && writer?.entry?.id == id) { clearChat(); restoreOnStartup = false }
+                    store.delete(key, entry.revision)
+                    if (run == epoch && writer?.entry?.key == key) { clearChat(); restoreOnStartup = false }
+                    conversationImages?.delete(store, key); generatedImages?.delete(store, key)
                 } else {
                     require(title.isNotBlank() && title.length <= 120)
-                    store.rename(id, owner, entry.revision, title)
-                    if (run == epoch && writer?.entry?.id == id) writer = ConversationWriter(store, checkNotNull(store.load(id, owner)))
+                    store.rename(key, entry.revision, title)
+                    if (run == epoch && writer?.entry?.key == key) writer = ConversationWriter(store, checkNotNull(store.load(key)))
                 }
-                if (run == epoch) resolveHistory(owner, run)
+                if (run == epoch) resolveHistory(scope, run)
             } catch (_: Exception) { if (run == epoch) mutableHistory.value = history.value.copy(loading = false,
                 error = if (title == null) "Chat could not be deleted. Saved data has not been reset."
                     else "Name could not be saved. Use a non-empty name up to 120 characters, or try again.") }
@@ -357,25 +389,39 @@ class InferenceViewModel(
     }
     fun send(onStarted: () -> Unit = {}) = send(false, onStarted)
     fun generateImage(onStarted: () -> Unit = {}) = send(true, onStarted)
+    private fun ownsAttachment(key: ConversationKey, scope: Long) =
+        !cleared && scope == sentImageScope.value && accounts.value == observedAccess &&
+            writer?.entry?.key == key && historyScope?.canView(key) == true && key.supportsReplay
+
     suspend fun generatedContent(reference: GeneratedAttachment): io.github.grassified.wristprompt.images.ImageContent {
-        val entry = withContext(Dispatchers.Main.immediate) {
-            require(conversation.state.messages.any { it.generated == reference })
-            writer?.entry ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
-        }
-        return (generatedImages ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)).content(entry.owner, entry.id, reference)
-    }
-    /** Display read only. Recheck ownership after IO so a late result cannot cross chats/accounts. */
-    suspend fun sentThumbnail(message: ChatMessage, id: String, scope: Long = sentImageScope.value): ByteArray {
-        fun owns() = !cleared && scope == sentImageScope.value && message.role == ChatRole.USER && message.status == ChatMessageStatus.COMPLETED &&
-            id in message.attachments && conversation.state.messages.any { it == message }
-        val entry = withContext(Dispatchers.Main.immediate) {
-            if (!owns()) throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
-            writer?.entry ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
-        }
-        val bytes = (conversationImages ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)).thumbnail(entry.id, id)
-        withContext(Dispatchers.Main.immediate) {
-            if (!owns() || writer?.entry?.id != entry.id || ownerScope != entry.owner || accounts.value != observedAccess)
+        val (key, scope) = withContext(Dispatchers.Main.immediate) {
+            val key = writer?.entry?.key ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+            val scope = sentImageScope.value
+            if (!ownsAttachment(key, scope) || conversation.state.messages.none { it.generated == reference })
                 throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+            key to scope
+        }
+        val store = conversationStore ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+        val content = (generatedImages ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)).content(store, key, reference)
+        withContext(Dispatchers.Main.immediate) {
+            if (!ownsAttachment(key, scope)) throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+        }
+        return content
+    }
+
+    /** Recheck the active display after IO so a late result cannot cross chats/accounts. */
+    suspend fun sentThumbnail(message: ChatMessage, id: String, scope: Long = sentImageScope.value): ByteArray {
+        val key = withContext(Dispatchers.Main.immediate) {
+            val key = writer?.entry?.key ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+            if (!ownsAttachment(key, scope) || message.role != ChatRole.USER || message.status != ChatMessageStatus.COMPLETED ||
+                id !in message.attachments || message !in conversation.state.messages)
+                throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+            key
+        }
+        val store = conversationStore ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
+        val bytes = (conversationImages ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)).thumbnail(store, key, message.id, id)
+        withContext(Dispatchers.Main.immediate) {
+            if (!ownsAttachment(key, scope)) throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE)
         }
         return bytes
     }
@@ -384,6 +430,12 @@ class InferenceViewModel(
         val catalog = prepared?.takeIf(::compatible) ?: return
         val selected = state.value.selectedSlug ?: return
         val model = catalog.models.firstOrNull { it.slug == selected } ?: return
+        writer?.entry?.let {
+            if (!canContinue(it, catalog, selected)) {
+                conversation.readOnly(readOnlyReason(it, false)); publishChat()
+                return
+            }
+        }
         contextModel = selected
         val selectedImages = imageSelection.selected.value.toList()
         if (selectedImages.isNotEmpty() && conversation.state.draft.isBlank()) {
@@ -408,7 +460,7 @@ class InferenceViewModel(
         }
         val title = conversation.state.draft.take(120).ifBlank { "Chat" }
         if (conversationStore != null && writer == null) {
-            val owner = ownerScope ?: return
+            val owner = catalogScope?.owner ?: return
             writer = ConversationWriter(conversationStore, ConversationEntry(owner = owner, route = catalog.credential.mode.name,
                 model = selected, title = title, updated = System.currentTimeMillis(), snapshot = conversation.snapshot()))
         }
@@ -440,8 +492,8 @@ class InferenceViewModel(
             try {
                 val input = plainInput ?: run {
                     val images = conversationImages ?: throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE, requestNotSent = true)
-                    val chatId = activeWriter?.entry?.id ?: throw ApiFailure(ApiProblem.CHAT_STORAGE, requestNotSent = true)
-                    images.prepare(chatId, selectedImages, canonical)
+                    val entry = activeWriter?.entry ?: throw ApiFailure(ApiProblem.CHAT_STORAGE, requestNotSent = true)
+                    images.prepare(checkNotNull(conversationStore), entry, selectedImages, canonical)
                 }
                 val checkpoint = started ?: run {
                     // Bound the full encoded request before consuming the draft or dispatching HTTP.
@@ -477,7 +529,7 @@ class InferenceViewModel(
                         val completed = conversation.snapshot()
                         if (generated == null) activeWriter?.write(completed)
                         else withContext(NonCancellable) {
-                            checkNotNull(generatedImages).commit(checkNotNull(activeWriter).entry, generated) { activeWriter.write(completed) }
+                            checkNotNull(generatedImages).commit(checkNotNull(conversationStore), checkNotNull(activeWriter).entry, generated) { activeWriter.write(completed) }
                         }
                     }
                     catch (failure: Exception) {
@@ -520,7 +572,9 @@ class InferenceViewModel(
         if (problem in setOf(ApiProblem.NO_MODELS, ApiProblem.STALE_ACCOUNT, ApiProblem.REAUTHORIZE,
                 ApiProblem.REAUTHORIZING, ApiProblem.API_KEY_MISSING, ApiProblem.STORAGE)) {
             if (problem != ApiProblem.NO_MODELS) clearChat()
+            else writer?.entry?.let { conversation.readOnly(readOnlyReason(it, false)); publishChat() }
             prepared = null
+            catalogScope = null
             mutableState.value = ProofState(stage = ProofStage.FAILED, problem = problem, mode = state.value.mode)
         }
     }

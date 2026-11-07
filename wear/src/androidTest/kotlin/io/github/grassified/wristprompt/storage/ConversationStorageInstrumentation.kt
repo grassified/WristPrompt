@@ -7,6 +7,7 @@ import android.app.Instrumentation
 import android.database.sqlite.SQLiteDatabase
 import android.os.Bundle
 import io.github.grassified.wristprompt.openai.*
+import io.github.grassified.wristprompt.auth.CredentialMode
 import kotlinx.coroutines.runBlocking
 
 /** Standalone synthetic storage gate; no credentials, network or owner-app data. */
@@ -72,10 +73,10 @@ class ConversationStorageInstrumentation : Instrumentation() {
         val store = SqliteConversationStore(storageContext)
         try {
             val owner = store.owner("c".repeat(64))
-            val entries = store.list(owner)
+            val entries = store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN))
             check(entries.size == 3)
             for (summary in entries) {
-                val saved = checkNotNull(store.load(summary.id, owner))
+                val saved = checkNotNull(store.load(summary.key))
                 val chat = ChatConversation().apply { restore(saved.snapshot) }
                 check(!chat.state.busy && chat.state.draft.isEmpty())
                 check(chat.state.messages.take(2).map { it.text } == listOf("durable question", "durable answer"))
@@ -119,17 +120,17 @@ class ConversationStorageInstrumentation : Instrumentation() {
             val saved = store.save(exact)
             val oversized = sizedEntry(owner, ConversationCodec.MAX_ENTRY_BYTES + 1)
             expectRejected { store.save(oversized) }
-            check(store.load(saved.id, owner) == saved)
+            check(store.load(saved.key) == saved)
             phase = "total-byte-limit"
             val entries = mutableListOf(saved)
             repeat(31) { entries += store.save(exact.copy(id = java.util.UUID.randomUUID().toString())) }
             expectRejected { store.save(exact.copy(id = java.util.UUID.randomUUID().toString())) }
-            check(store.list(owner).size == 32)
-            store.delete(entries.last().id, owner, entries.last().revision)
+            check(store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).size == 32)
+            store.delete(entries.last().key, entries.last().revision)
             val replacement = store.save(exact.copy(id = java.util.UUID.randomUUID().toString()))
-            check(store.load(replacement.id, owner) == replacement)
+            check(store.load(replacement.key) == replacement)
             // Remove large content before exercising the independent UUID/tombstone budget.
-            (entries.dropLast(1) + replacement).forEach { store.delete(it.id, owner, it.revision) }
+            (entries.dropLast(1) + replacement).forEach { store.delete(it.key, it.revision) }
             phase = "tombstone-limit"
             val db = connection(store)
             val small = exact.copy(id = java.util.UUID.randomUUID().toString(), snapshot = ChatConversation().snapshot())
@@ -154,7 +155,7 @@ class ConversationStorageInstrumentation : Instrumentation() {
             val last = store.save(small)
             expectRejected { store.save(small.copy(id = java.util.UUID.randomUUID().toString())) }
             val changed = store.save(last.copy(title = "Update at UUID cap"))
-            store.delete(changed.id, owner, changed.revision)
+            store.delete(changed.key, changed.revision)
             expectRejected { store.save(last.copy(revision = 0)) }
             expectRejected { store.save(small.copy(id = java.util.UUID.randomUUID().toString())) }
             phase = "disk-full-recovery"
@@ -175,10 +176,10 @@ class ConversationStorageInstrumentation : Instrumentation() {
             catch (_: SQLiteFullException) { }
             val large = sizedEntry(owner, ConversationCodec.MAX_ENTRY_BYTES).copy(id = baseline.id, revision = baseline.revision)
             expectRejected { fullStore.save(large) }
-            check(fullStore.load(baseline.id, owner) == baseline)
+            check(fullStore.load(baseline.key) == baseline)
             db.setMaximumSize(128L * 1024 * 1024)
             val recovered = fullStore.save(large)
-            check(recovered.revision == baseline.revision + 1 && fullStore.load(recovered.id, owner) == recovered)
+            check(recovered.revision == baseline.revision + 1 && fullStore.load(recovered.key) == recovered)
         } finally { fullStore.close() }
         storageContext.deleteDatabase("conversations.db")
     }
@@ -186,7 +187,7 @@ class ConversationStorageInstrumentation : Instrumentation() {
         seedRestart()
         val store = SqliteConversationStore(storageContext)
         val owner = store.owner("c".repeat(64))
-        val target = store.list(owner).single { it.title == "Completed" }
+        val target = store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).single { it.title == "Completed" }
         connection(store).beginTransaction()
         connection(store).execSQL("UPDATE conversations SET display=?,replay=?,revision=revision+1 WHERE id=?",
             arrayOf("uncommitted display", "uncommitted replay", target.id))
@@ -202,7 +203,7 @@ class ConversationStorageInstrumentation : Instrumentation() {
         val store = SqliteConversationStore(storageContext)
         try {
             val owner = store.owner("c".repeat(64))
-            check(store.list(owner).all { it.revision == 1L })
+            check(store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).all { it.revision == 1L })
         } finally { store.close() }
         SQLiteDatabase.openDatabase(storageContext.getDatabasePath("conversations.db").path, null,
             SQLiteDatabase.OPEN_READONLY).use { db ->
@@ -226,30 +227,30 @@ class ConversationStorageInstrumentation : Instrumentation() {
             title = "Synthetic", updated = 1, snapshot = chat.snapshot()))
         store.close(); store = SqliteConversationStore(storageContext)
         phase = "restore-interrupted"
-        val interrupted = checkNotNull(store.load(entry.id, owner))
+        val interrupted = checkNotNull(store.load(entry.key))
         val reopened = ChatConversation().apply { restore(interrupted.snapshot) }
         check(!reopened.state.busy && reopened.state.messages.single().status == ChatMessageStatus.EXCLUDED)
-        check(store.load(entry.id, other) == null && store.list(other).isEmpty())
+        check(store.load(entry.key.copy(owner = other)) == null && store.list(HistoryScope(other, CredentialMode.CHATGPT_PLAN)).isEmpty())
         chat.complete(StreamResult().apply { accept(ResponseEvent.Completed("synthetic answer")); end() })
         phase = "commit-completed"
         entry = store.save(entry.copy(snapshot = chat.snapshot()))
         store.close(); store = SqliteConversationStore(storageContext)
         phase = "restore-completed"
-        check(store.load(entry.id, owner)?.snapshot?.replay == chat.snapshot().replay)
+        check(store.load(entry.key)?.snapshot?.replay == chat.snapshot().replay)
         try { store.save(entry.copy(revision = 0)); error("stale write accepted") } catch (_: ConversationStorageException) { }
-        check(store.load(entry.id, owner)?.revision == entry.revision)
+        check(store.load(entry.key)?.revision == entry.revision)
         try { store.save(entry.copy(model = "wrong")); error("model rebound") } catch (_: ConversationStorageException) { }
         phase = "billing-and-owner-write-boundaries"
         expectRejected { store.save(entry.copy(route = "OPENAI_API_KEY")) }
         expectRejected { store.save(entry.copy(owner = other)) }
-        expectRejected { store.rename(entry.id, other, entry.revision, "Wrong owner") }
-        expectRejected { store.delete(entry.id, other, entry.revision) }
-        check(store.load(entry.id, owner) == entry)
+        expectRejected { store.rename(entry.key.copy(owner = other), entry.revision, "Wrong owner") }
+        expectRejected { store.delete(entry.key.copy(owner = other), entry.revision) }
+        check(store.load(entry.key) == entry)
         phase = "rename-delete"
-        store.rename(entry.id, owner, entry.revision, "Renamed")
-        entry = checkNotNull(store.load(entry.id, owner)); check(entry.title == "Renamed")
-        store.delete(entry.id, owner, entry.revision)
-        check(store.list(owner).isEmpty() && store.load(entry.id, owner) == null)
+        store.rename(entry.key, entry.revision, "Renamed")
+        entry = checkNotNull(store.load(entry.key)); check(entry.title == "Renamed")
+        store.delete(entry.key, entry.revision)
+        check(store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).isEmpty() && store.load(entry.key) == null)
         try { store.save(entry.copy(revision = 0)); error("deleted chat resurrected") } catch (_: ConversationStorageException) { }
         store.close()
         val file = storageContext.getDatabasePath("conversations.db")
@@ -264,20 +265,20 @@ class ConversationStorageInstrumentation : Instrumentation() {
         val template = entry.copy(id = java.util.UUID.randomUUID().toString(), revision = 0)
         val live = (1..100).map { store.save(template.copy(id = java.util.UUID.randomUUID().toString(), updated = it.toLong())) }
         expectRejected { store.save(template) }
-        check(store.list(owner).size == 100)
+        check(store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).size == 100)
         // Replacing an existing row at capacity is valid; failed inserts must not evict.
         val updated = store.save(live.first().copy(title = "Updated at capacity"))
-        store.delete(live.last().id, owner, live.last().revision)
+        store.delete(live.last().key, live.last().revision)
         val recovered = store.save(template)
-        check(store.list(owner).size == 100 && store.load(updated.id, owner) == updated)
+        check(store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).size == 100 && store.load(updated.key) == updated)
         store.close()
         phase = "corrupt-record-preservation"
         SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
             db.execSQL("UPDATE conversations SET display=? WHERE id=?", arrayOf("{broken", recovered.id))
         }
         store = SqliteConversationStore(storageContext)
-        expectRejected { store.load(recovered.id, owner) }
-        check(store.load(updated.id, owner) == updated)
+        expectRejected { store.load(recovered.key) }
+        check(store.load(updated.key) == updated)
         store.close()
         SQLiteDatabase.openDatabase(file.path, null, SQLiteDatabase.OPEN_READONLY).use { db ->
             db.rawQuery("SELECT display FROM conversations WHERE id=?", arrayOf(recovered.id)).use {

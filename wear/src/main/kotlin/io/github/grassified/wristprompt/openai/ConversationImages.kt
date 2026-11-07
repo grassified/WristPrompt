@@ -1,6 +1,9 @@
 package io.github.grassified.wristprompt.openai
 
 import io.github.grassified.wristprompt.images.*
+import io.github.grassified.wristprompt.storage.ConversationEntry
+import io.github.grassified.wristprompt.storage.ConversationKey
+import io.github.grassified.wristprompt.storage.ConversationStore
 import java.io.File
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
@@ -23,10 +26,14 @@ class ConversationImages(
         require(ImageLimits.validId(id))
         return stores.getOrPut(id) { ImageFileStore(File(root, id)) }
     }
-    suspend fun prepare(chat: String, selected: List<String>, input: List<JsonObject>): List<JsonObject> = withContext(Dispatchers.IO) {
+    suspend fun prepare(database: ConversationStore, entry: ConversationEntry, selected: List<String>,
+        input: List<JsonObject>): List<JsonObject> = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
                 require(selected.size <= ImageLimits.MAX_BATCH && selected.distinct().size == selected.size)
+                database.requireReplayTarget(entry)
+                require(input.dropLast(1) == entry.snapshot.replay && ImageInput.ids(input.last()) == selected)
+                val chat = entry.id
                 if (input.sumOf { ImageInput.ids(it).size } > ImageInput.MAX_REQUEST_IMAGES)
                     throw ApiFailure(ApiProblem.IMAGE_LIMIT, requestNotSent = true)
                 if (!ImageInput.hasImages(input)) return@withLock input
@@ -47,19 +54,32 @@ class ConversationImages(
                 if (directories.size > 100 || used + newRecords.sumOf { it.imageBytes.toLong() + it.thumbBytes } + ImageLimits.MAX_MANIFEST_BYTES > MAX_TOTAL_BYTES)
                     throw ApiFailure(ApiProblem.IMAGE_LIMIT, requestNotSent = true)
                 contents.forEachIndexed { index, content ->
-                    archive.accept("conversation", setOf("conversation"), ImagePacket(source = catalog.source, image = content.record(selected[index]))) { content }
+                    val record = content.record(selected[index])
+                    val committed = archive.accept("conversation", setOf("conversation"), ImagePacket(source = catalog.source, image = record)) { content }
+                    require(committed.records.any { it == record })
                 }
-                ImageInput.materialize(input) { id -> archive.content(id).let { validate(it.record(id), it).image } }
+                val materialized = mutableMapOf<String, ByteArray>()
+                ImageInput.materialize(input) { id ->
+                    materialized.getOrPut(id) {
+                        val content = archive.content(id)
+                        // The archive read checked the digests. Selected bytes have already been decoded.
+                        if (id in selected) content.image else validate(content.record(id), content).image
+                    }
+                }
             } catch (cancelled: CancellationException) { throw cancelled
             } catch (failure: ApiFailure) { throw failure
             } catch (_: Exception) { throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE, requestNotSent = true) }
         }
     }
     /** Read only the conversation's committed private copy; never consult the library. */
-    suspend fun thumbnail(chat: String, id: String): ByteArray = withContext(Dispatchers.IO) {
+    suspend fun thumbnail(database: ConversationStore, key: ConversationKey, messageId: Long, id: String): ByteArray = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
-                require(ImageLimits.validId(chat) && ImageLimits.validId(id))
+                require(key.supportsReplay && ImageLimits.validId(id))
+                val entry = checkNotNull(database.load(key))
+                require(entry.snapshot.messages.any { it.id == messageId && it.role == "USER" &&
+                    it.status == "COMPLETED" && ContentPart.ImageAttachment(id) in it.parts })
+                val chat = key.id
                 require(File(root, "$chat/catalog.json").isFile)
                 val content = store(chat).content(id)
                 validate(content.record(id), content).thumbnail
@@ -68,13 +88,30 @@ class ConversationImages(
         }
     }
     /** Caller first durably tombstones the chat; no recursive deletion or library mutation. */
-    suspend fun delete(chat: String) = withContext(Dispatchers.IO) {
+    suspend fun delete(database: ConversationStore, key: ConversationKey) = withContext(Dispatchers.IO) {
         mutex.withLock {
-            require(ImageLimits.validId(chat))
-            val directory = File(root, chat)
-            val owned = Regex("[0-9a-f-]{36}-[1-9][0-9]{0,18}-(image|thumb)\\.jpg(\\.part)?")
-            directory.listFiles().orEmpty().forEach { if (it.isFile && (it.name in setOf("catalog.json", "catalog.json.part") || owned.matches(it.name))) it.delete() }
-            directory.delete(); stores.remove(chat)
+            require(database.isDeleted(key))
+            cleanup(key.id)
         }
+    }
+
+    /** An absent row cannot distinguish a fresh reservation from a lost database. */
+    suspend fun recover(database: ConversationStore) = withContext(Dispatchers.IO) { mutex.withLock {
+        root.listFiles().orEmpty().filter { it.isDirectory && ImageLimits.validId(it.name) }.take(1000).forEach {
+            try {
+                if (database.sentArchiveWasDeleted(it.name)) cleanup(it.name)
+            } catch (cancelled: CancellationException) { throw cancelled
+            } catch (_: Exception) { /* Preserve files when the tombstone cannot be established. */ }
+        }
+    } }
+
+    private fun cleanup(chat: String) {
+        val directory = File(root, chat)
+        val owned = Regex("[0-9a-f-]{36}-[1-9][0-9]{0,18}-(image|thumb)\\.jpg(\\.part)?")
+        directory.listFiles().orEmpty().forEach {
+            if (it.isFile && (it.name in setOf("catalog.json", "catalog.json.part") || owned.matches(it.name))) it.delete()
+        }
+        directory.delete()
+        stores.remove(chat)
     }
 }
