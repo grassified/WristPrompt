@@ -20,7 +20,8 @@ copy of the [frozen v1 fixture](../wear/src/androidTest/fixtures/README.md). The
 first compares all original columns, raw display and replay bytes, and attachment
 paths and digests. The second aborts the backfill with a SQLite trigger, verifies
 the v1 schema and data survived, and retries the upgrade. It also exercises
-unknown routes, incompatible metadata and attachment recovery.
+unknown routes, read-only history, invalid display and replay, wrong ownership,
+stale revisions, and attachment recovery from uncertain rows.
 
 ```sh
 ./gradlew :wear:testDebugUnitTest
@@ -43,6 +44,9 @@ History fixture: `--scenario SAVED_CHATS_HISTORY` (25 synthetic, memory-only cha
 Its actions must not increase inference generations until explicit Send. On Windows,
 run Python in UTF-8 mode (`python -X utf8 ...`); host tests need a writable disposable
 temporary directory. See [D6_C_HISTORY.md](D6_C_HISTORY.md) for exact evidence limits.
+Use `--scenario READ_ONLY_HISTORY` for an unsupported replay format. At normal
+and large font sizes, check the read-only message, preserved transcript and
+explicit New Chat action. The action should leave an empty draft and transcript.
 
 Use a disposable test lab with the named AVDs `WristPrompt_Watch7` and, for paired
 Data Layer investigation, `WristPrompt_Phone`. Runners discover and validate the

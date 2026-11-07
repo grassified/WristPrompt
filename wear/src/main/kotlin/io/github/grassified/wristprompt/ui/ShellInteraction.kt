@@ -9,7 +9,7 @@ internal class ShellInteraction(
     private val write: () -> Unit,
 ) {
     fun ask() {
-        if (model.state.value.busy || model.chat.value.busy) return
+        if (model.state.value.busy || model.chat.value.busy || model.chat.value.readOnlyReason != null) return
         navigation.open(Surface.COMPOSER)
         // A retained draft is reviewed, never replaced just by returning to Ask.
         if (model.chat.value.draft.isEmpty()) write()

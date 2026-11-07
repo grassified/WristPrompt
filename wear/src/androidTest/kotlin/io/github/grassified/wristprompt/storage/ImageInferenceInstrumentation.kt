@@ -17,6 +17,7 @@ import android.os.Bundle
 import androidx.lifecycle.viewModelScope
 import io.github.grassified.wristprompt.images.*
 import io.github.grassified.wristprompt.openai.*
+import io.github.grassified.wristprompt.auth.CredentialMode
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.serialization.json.*
@@ -135,7 +136,7 @@ class ImageInferenceInstrumentation : Instrumentation() {
                 phase = "restart-reopen"
                 check(vm.chat.value.messages.first().attachments.size == 2)
                 check(vm.chat.value.draft.isEmpty() && vm.imageSelection.selected.value.isEmpty())
-                val saved = store.list(owner).single()
+                val saved = store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).single()
                 open(saved.id); check(provider.count == 0)
                 val restored = vm.chat.value.messages.first()
                 restored.attachments.forEach { check(vm.sentThumbnail(restored, it).isNotEmpty()) }
@@ -204,9 +205,9 @@ class ImageInferenceInstrumentation : Instrumentation() {
             } finally { main { picker.viewModelScope.cancel() } }
             check(vm.chat.value.messages.first().text == "Synthetic preset edited\nAdditional text  ")
             check(provider.count == 3 && provider.inputs.last().single()["content"]!!.jsonArray.size == 3)
-            val latest = store.list(owner).first()
+            val latest = store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).first()
             // Keep only the successful multi-image chat in this isolated namespace.
-            store.list(owner).filter { it.id != latest.id }.forEach { store.delete(it.id, owner, it.revision); images.delete(it.id) }
+            store.list(HistoryScope(owner, CredentialMode.CHATGPT_PLAN)).filter { it.id != latest.id }.forEach { store.delete(it.key, it.revision); images.delete(store, it.key) }
             ids.forEach { library.delete(it) }
             open(latest.id); check(provider.count == 3)
             check(vm.chat.value.messages.first().attachments == ids.take(2))

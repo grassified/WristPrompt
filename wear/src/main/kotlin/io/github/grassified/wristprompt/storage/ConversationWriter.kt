@@ -14,7 +14,8 @@ class ConversationWriter(private val store: ConversationStore, initial: Conversa
     suspend fun write(snapshot: ConversationSnapshot) = withContext(NonCancellable) {
         mutex.withLock {
             // A late Stop snapshot cannot roll back an already committed completed exchange.
-            if (snapshot.replay.size < entry.snapshot.replay.size) return@withLock
+            require(entry.replayAvailable && entry.key.supportsReplay)
+            if (snapshot.completedExchanges < entry.snapshot.completedExchanges) return@withLock
             entry = store.save(entry.copy(snapshot = snapshot, updated = System.currentTimeMillis()))
         }
     }

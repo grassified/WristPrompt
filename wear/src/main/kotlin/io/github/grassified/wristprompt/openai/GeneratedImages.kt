@@ -42,10 +42,11 @@ class GeneratedImages(private val root: File,
         PreparedGeneratedImage(GeneratedAttachment(record.id, record.width, record.height, record.imageBytes,
             record.imageDigest, record.thumbBytes, record.thumbDigest), content)
     }
-    suspend fun commit(entry: ConversationEntry, image: PreparedGeneratedImage, save: suspend () -> Unit) =
+    suspend fun commit(store: ConversationStore, entry: ConversationEntry, image: PreparedGeneratedImage, save: suspend () -> Unit) =
         withContext(NonCancellable + Dispatchers.IO) { mutex.withLock {
             try {
                 image.reference.validate()
+                store.requireReplayTarget(entry)
                 val directory = directory(entry.owner, entry.id)
                 require(directory.exists() || directory.mkdirs())
                 sync(checkNotNull(root.parentFile)); sync(root); sync(checkNotNull(directory.parentFile))
@@ -63,17 +64,21 @@ class GeneratedImages(private val root: File,
             } catch (failure: CancellationException) { throw failure
             } catch (_: Exception) { throw ConversationStorageException() }
         } }
-    suspend fun content(owner: String, chat: String, reference: GeneratedAttachment): ImageContent = withContext(Dispatchers.IO) {
+    suspend fun content(store: ConversationStore, key: ConversationKey, reference: GeneratedAttachment): ImageContent = withContext(Dispatchers.IO) {
         mutex.withLock {
             try {
                 reference.validate()
-                val directory = directory(owner, chat)
+                require(key.supportsReplay)
+                val entry = checkNotNull(store.load(key))
+                require(entry.snapshot.messages.any { ContentPart.GeneratedImage(reference) in it.parts })
+                val directory = directory(key.owner, key.id)
                 fun read(kind: String, size: Int, hash: String) = File(directory, "${reference.id}-$kind.jpg").inputStream().use {
                     readImageBytes(it, size).also { bytes -> require(bytes.size == size && digest(bytes) == hash) }
                 }
                 val content = ImageContent(read("image", reference.bytes, reference.sha256),
                     read("thumb", reference.thumbBytes, reference.thumbSha256), reference.width, reference.height)
                 validate(content.record(reference.id), content)
+            } catch (cancelled: CancellationException) { throw cancelled
             } catch (_: Exception) { throw ApiFailure(ApiProblem.IMAGE_UNAVAILABLE) }
         }
     }
@@ -82,18 +87,18 @@ class GeneratedImages(private val root: File,
         root.listFiles().orEmpty().filter { it.isDirectory && ImageLimits.validId(it.name) }.take(1000).forEach { owner ->
             owner.listFiles().orEmpty().filter { it.isDirectory && ImageLimits.validId(it.name) }.take(10000).forEach { chat ->
                 try {
-                    val snapshot = store.load(chat.name, owner.name)?.snapshot
-                    val keep = snapshot?.messages.orEmpty().flatMap { message -> message.parts.filterIsInstance<ContentPart.GeneratedImage>() }
-                        .flatMap { listOf("${it.reference.id}-image.jpg", "${it.reference.id}-thumb.jpg") }.toSet()
-                    cleanup(chat, keep)
+                    store.generatedFilesForRecovery(chat.name, owner.name)?.let { cleanup(chat, it) }
                 } catch (cancelled: CancellationException) { throw cancelled
                 } catch (_: Exception) { /* Preserve all files on unreadable/unknown canonical metadata. */ }
             }
         }
     } }
     /** Call only after the canonical chat tombstone succeeds. Imported library is unreachable. */
-    suspend fun delete(owner: String, chat: String) = withContext(Dispatchers.IO) {
-        mutex.withLock { cleanup(directory(owner, chat), emptySet()) }
+    suspend fun delete(store: ConversationStore, key: ConversationKey) = withContext(Dispatchers.IO) {
+        mutex.withLock {
+            require(store.isDeleted(key))
+            cleanup(directory(key.owner, key.id), emptySet())
+        }
     }
     private fun cleanup(directory: File, keep: Set<String>) {
         directory.listFiles().orEmpty().take(1024).forEach { file ->

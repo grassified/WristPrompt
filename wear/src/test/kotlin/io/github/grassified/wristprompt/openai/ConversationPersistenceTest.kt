@@ -104,7 +104,7 @@ class ConversationPersistenceTest {
         try { writer.write(snapshot); fail("Expected storage error") } catch (_: ConversationStorageException) { }
         assertEquals(0L, writer.entry.revision)
     }
-    private class MemoryStore : ConversationStore {
+    private class MemoryStore : TestConversationStore() {
         val saved = mutableListOf<ConversationEntry>(); var fail = false
         override suspend fun owner(identityHash: String) = error("unused")
         override suspend fun save(entry: ConversationEntry): ConversationEntry {
@@ -112,9 +112,9 @@ class ConversationPersistenceTest {
             require(entry.revision == saved.size.toLong())
             return entry.copy(revision = entry.revision + 1).also { saved.add(it) }
         }
-        override suspend fun load(id: String, owner: String): ConversationEntry? = null
-        override suspend fun list(owner: String) = emptyList<ConversationSummary>()
-        override suspend fun delete(id: String, owner: String, revision: Long) = error("unused")
-        override suspend fun rename(id: String, owner: String, revision: Long, title: String) = error("unused")
+        override suspend fun load(key: ConversationKey): ConversationEntry? = null
+        override suspend fun list(scope: HistoryScope) = emptyList<ConversationSummary>()
+        override suspend fun delete(key: ConversationKey, revision: Long) = error("unused")
+        override suspend fun rename(key: ConversationKey, revision: Long, title: String) = error("unused")
     }
 }

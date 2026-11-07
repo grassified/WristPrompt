@@ -17,6 +17,25 @@ class ImageInputTest {
     private fun result() = StreamResult().apply { accept(ResponseEvent.Completed("answer")); end() }
     private fun entry(snapshot: ConversationSnapshot) = ConversationEntry(owner = UUID.randomUUID().toString(),
         route = "CHATGPT_PLAN", model = model, title = "Synthetic", updated = 1, snapshot = snapshot)
+    private class ArchiveStore : TestConversationStore() {
+        var saved: ConversationEntry? = null
+        private var tombstone: ConversationKey? = null
+        override suspend fun owner(identityHash: String) = error("unused")
+        override suspend fun save(entry: ConversationEntry) =
+            entry.copy(revision = entry.revision + 1).also { saved = it }
+        override suspend fun load(key: ConversationKey) = saved?.takeIf { it.key == key }
+        override suspend fun list(scope: HistoryScope) = error("unused")
+        override suspend fun delete(key: ConversationKey, revision: Long) {
+            check(saved?.key == key && saved?.revision == revision)
+            saved = null
+            tombstone = key
+        }
+        override suspend fun isDeleted(key: ConversationKey) = key == tombstone
+        override suspend fun rename(key: ConversationKey, revision: Long, title: String) = error("unused")
+    }
+    private fun completed(ids: List<String>) = ChatConversation().apply {
+        draft(text); checkNotNull(begin(ids)); complete(result())
+    }.snapshot()
     @Test fun deterministicZeroOneAndMultipleSerializationForBothRoutes() = runTest {
         for (mode in CredentialMode.entries) for (count in listOf(0, 1, 3, 6)) {
             val ids = List(count) { ImageLimits.newId() }
@@ -120,16 +139,21 @@ class ImageInputTest {
         try {
             val library = ImageFileStore(directory.resolve("library"))
             val ids = library.importBatch(3) { ImageContent(byteArrayOf(it.toByte(), 2), byteArrayOf(3), 1, 1) }.records.map { it.id }
-            val root = directory.resolve("replay"); val chat = ImageLimits.newId()
+            val root = directory.resolve("replay")
+            val store = ArchiveStore()
+            val fresh = entry(ChatConversation().snapshot())
+            val chat = fresh.id
             fun archive() = ConversationImages(root, library) { record, content -> ImageWire.validateContent(record, content); content }
             val local = listOf(ImageInput.user(text, ids))
-            val before = archive().prepare(chat, ids, local)
+            val before = archive().prepare(store, fresh, ids, local)
+            val saved = store.save(fresh.copy(snapshot = completed(ids)))
             ids.forEach { library.delete(it) }; library.load()
-            val after = archive().prepare(chat, emptyList(), local)
-            assertTrue("Replay bytes survive library deletion", before == after)
-            try { archive().prepare(chat, ids, local); fail("Deleted selection must fail") }
+            val after = archive().prepare(store, saved, emptyList(), saved.snapshot.replay + ImageInput.user("next"))
+            assertTrue("Replay bytes survive library deletion", before.single() == after.first())
+            try { archive().prepare(store, saved, ids, saved.snapshot.replay + local); fail("Deleted selection must fail") }
             catch (failure: ApiFailure) { assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem) }
-            archive().delete(chat)
+            store.delete(saved.key, saved.revision)
+            archive().delete(store, saved.key)
             assertFalse(root.resolve(chat).exists())
         } finally { directory.deleteRecursively() }
     }
@@ -146,7 +170,7 @@ class ImageInputTest {
                     "corrupt" -> file.writeBytes(byteArrayOf(5, 6)) // Same size, incorrect integrity.
                     else -> file.writeBytes(ByteArray(ImageLimits.MAX_IMAGE_BYTES + 1))
                 }
-                try { archive.prepare(ImageLimits.newId(), listOf(id), listOf(ImageInput.user(text, listOf(id)))); fail("Expected file rejection") }
+                try { archive.prepare(ArchiveStore(), entry(ChatConversation().snapshot()), listOf(id), listOf(ImageInput.user(text, listOf(id)))); fail("Expected file rejection") }
                 catch (failure: ApiFailure) {
                     assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem); assertNull(failure.cause)
                     assertFalse(failure.message.orEmpty().contains(directory.path))
@@ -159,13 +183,17 @@ class ImageInputTest {
         try {
             val library = ImageFileStore(directory.resolve("library"))
             val id = library.importBatch(1) { ImageContent(byteArrayOf(1), byteArrayOf(2), 1, 1) }.records.single().id
-            val root = directory.resolve("replay"); val chat = ImageLimits.newId()
+            val root = directory.resolve("replay")
+            val store = ArchiveStore()
+            val fresh = entry(ChatConversation().snapshot())
+            val chat = fresh.id
             fun archive() = ConversationImages(root, library) { record, content -> ImageWire.validateContent(record, content); content }
             val user = ImageInput.user(text, listOf(id))
-            archive().prepare(chat, listOf(id), listOf(user))
+            archive().prepare(store, fresh, listOf(id), listOf(user))
+            val saved = store.save(fresh.copy(snapshot = completed(listOf(id))))
             root.resolve("$chat/catalog.json").delete()
-            val continuation = listOf(user, buildJsonObject { put("role", "assistant"); put("content", "answer") }, ImageInput.user("next"))
-            try { archive().prepare(chat, emptyList(), continuation); fail("Expected missing metadata rejection") }
+            val continuation = saved.snapshot.replay + ImageInput.user("next")
+            try { archive().prepare(store, saved, emptyList(), continuation); fail("Expected missing metadata rejection") }
             catch (failure: ApiFailure) { assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem) }
             assertTrue(root.resolve("$chat/$id-1-image.jpg").isFile)
         } finally { directory.deleteRecursively() }
@@ -175,12 +203,16 @@ class ImageInputTest {
         try {
             val library = ImageFileStore(directory.resolve("library"))
             val id = library.importBatch(1) { ImageContent(byteArrayOf(1), byteArrayOf(2), 1, 1) }.records.single().id
-            val root = directory.resolve("replay"); val chat = ImageLimits.newId()
+            val root = directory.resolve("replay")
+            val store = ArchiveStore()
+            val fresh = entry(ChatConversation().snapshot())
+            val chat = fresh.id
             val archive = ConversationImages(root, library) { record, content -> ImageWire.validateContent(record, content); content }
             val input = listOf(ImageInput.user(text, listOf(id)))
-            archive.prepare(chat, listOf(id), input)
+            archive.prepare(store, fresh, listOf(id), input)
+            val saved = store.save(fresh.copy(snapshot = completed(listOf(id))))
             root.resolve("$chat/$id-1-image.jpg").delete()
-            try { archive.prepare(chat, emptyList(), input); fail("Expected missing replay rejection") }
+            try { archive.prepare(store, saved, emptyList(), saved.snapshot.replay + ImageInput.user("next")); fail("Expected missing replay rejection") }
             catch (failure: ApiFailure) { assertEquals(ApiProblem.IMAGE_UNAVAILABLE, failure.problem) }
         } finally { directory.deleteRecursively() }
     }

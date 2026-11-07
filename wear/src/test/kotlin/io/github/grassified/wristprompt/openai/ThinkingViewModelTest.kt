@@ -19,7 +19,7 @@ class ThinkingViewModelTest {
     private val cap = ControlCapability("thinking", "openai", "a", "CHATGPT_PLAN", listOf("none", "medium", "ultra-Future"), "synthetic fixture")
     @Before fun setup() { Dispatchers.setMain(UnconfinedTestDispatcher()) }
     @After fun cleanup() { vms.forEach { it.viewModelScope.cancel() }; Dispatchers.resetMain() }
-    private class Store : ConversationStore {
+    private class Store : TestConversationStore() {
         val owner = UUID.randomUUID().toString(); val entries = linkedMapOf<String, ConversationEntry>()
         var fail = false; var writes = 0
         override suspend fun owner(identityHash: String) = owner
@@ -30,11 +30,11 @@ class ThinkingViewModelTest {
             return entry.copy(revision = entry.revision + 1, snapshot = ConversationCodec.decode(body, replay))
                 .also { entries[it.id] = it; writes++ }
         }
-        override suspend fun load(id: String, owner: String) = entries[id]?.takeIf { it.owner == owner }
-        override suspend fun list(owner: String) = entries.values.filter { it.owner == owner }.sortedByDescending { it.updated }
-            .map { ConversationSummary(it.id, it.title, it.model, it.route, it.updated, it.revision) }
-        override suspend fun delete(id: String, owner: String, revision: Long) = error("unused")
-        override suspend fun rename(id: String, owner: String, revision: Long, title: String) = error("unused")
+        override suspend fun load(key: ConversationKey) = entries[key.id]?.takeIf { it.key == key }
+        override suspend fun list(scope: HistoryScope) = entries.values.filter { scope.canView(it.key) }.sortedByDescending { it.updated }
+            .map { it.summary() }
+        override suspend fun delete(key: ConversationKey, revision: Long) = error("unused")
+        override suspend fun rename(key: ConversationKey, revision: Long, title: String) = error("unused")
     }
     private inner class Provider : AiProvider {
         var models = listOf(AiModel("a", "A", cap), AiModel("b", "B", cap.copy(model = "b", values = listOf("none"))), AiModel("c", "C"))

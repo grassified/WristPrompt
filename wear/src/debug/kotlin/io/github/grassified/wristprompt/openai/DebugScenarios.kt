@@ -30,7 +30,7 @@ internal enum class DebugScenario {
     MARKDOWN_MALFORMED, MARKDOWN_LONG_URL, ERROR_API_LIMIT, INCOMPLETE_PARTIAL,
     CONVERSATION_LIMIT, SECURE_STORAGE_FAILURE, STREAM_TO_COMPLETED_PLAIN,
     STREAM_TO_COMPLETED_MARKDOWN, STREAM_TO_COMPLETED_LONG, SINGLE_LONG_PARAGRAPH,
-    REAL_MULTI_PARAGRAPH, DIAGNOSTIC_PROOF_CURRENT_ATTEMPT, SAVED_CHATS_HISTORY, PROMPT_PRESETS,
+    REAL_MULTI_PARAGRAPH, DIAGNOSTIC_PROOF_CURRENT_ATTEMPT, SAVED_CHATS_HISTORY, READ_ONLY_HISTORY, PROMPT_PRESETS,
     MATH_BASIC, MATH_SCIENCE, MATH_LONG, MATH_MALFORMED, MATH_STREAMING;
     companion object { fun parse(name: String?): DebugScenario? = entries.singleOrNull { it.name == name } }
 }
@@ -215,7 +215,11 @@ internal class DebugScenarios(val scenario: DebugScenario) {
             completions++; onEvent(ResponseEvent.Completed(text))
         }
     }
-    private val historyStore = if (scenario == DebugScenario.SAVED_CHATS_HISTORY) DebugHistoryStore() else null
+    private val historyStore = when (scenario) {
+        DebugScenario.SAVED_CHATS_HISTORY -> DebugHistoryStore()
+        DebugScenario.READ_ONLY_HISTORY -> DebugHistoryStore(readOnly = true)
+        else -> null
+    }
     val vm = InferenceViewModel(access, InferenceSession({
         if (reauth) throw ApiFailure(ApiProblem.REAUTHORIZE)
         // Presentation-only renewal boundary. Real rotation/storage/HTTP is covered in PhoneIndependenceTest.
