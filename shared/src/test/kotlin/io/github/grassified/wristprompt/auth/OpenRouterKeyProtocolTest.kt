@@ -32,6 +32,18 @@ class OpenRouterKeyProtocolTest {
         }
     }
 
+    @Test fun opaqueBearerSuffixIsBoundedAndStillProviderSpecific() {
+        val alternate = "sk-or-v1-Synthetic_Opaque-Token.42"
+        assertEquals(alternate, OpenRouterKeyProtocol.transfer(ProfileProtocol.encode(OpenRouterKeyTransfer(binding, alternate))).key)
+        assertFalse(ApiKeyProtocol.forOpenAi(alternate))
+        for (invalid in listOf(
+            "sk-or-v1-", "sk-or-v1-test token", "sk-or-v1-test\"token",
+            "sk-or-v1-test=token", "sk-proj-synthetic", "sk-or-v1-" + "x".repeat(OpenRouterKeyProtocol.MAX_KEY_LENGTH),
+        )) {
+            assertFalse(OpenRouterKeyProtocol.validKey(invalid))
+        }
+    }
+
     @Test fun invalidOrAmbiguousMessagesAreRedacted() {
         val transfer = OpenRouterKeyTransfer(binding, key)
         val wire = ProfileProtocol.encode(transfer).decodeToString()
@@ -42,7 +54,7 @@ class OpenRouterKeyProtocolTest {
             ProfileProtocol.encode(transfer.copy(binding = binding.copy(expiresAt = Long.MAX_VALUE))),
             wire.replace("\"key\":", "\"key\":\"wrong\",\"key\":").encodeToByteArray(),
             (wire + " ").encodeToByteArray(),
-            ByteArray(1025),
+            ByteArray(2049),
         )
         assertFalse(transfer.toString().contains(key))
         for (bytes in invalid) {

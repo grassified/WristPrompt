@@ -32,8 +32,11 @@ setup. OpenRouter chat remains unavailable in E1.
   Replacement and removal retire the previous OpenRouter lease without touching
   conversations or attachments. Preparing a replacement leaves the current key
   available until commit.
-- Local validation recognizes the current `sk-or-v1-` key format documented by
-  [OpenRouter](https://openrouter.ai/docs/api/api-reference/api-keys/create-keys).
+- Local validation requires the `sk-or-v1-` namespace specified by
+  [OpenRouter authentication](https://openrouter.ai/docs/api_reference/authentication#accepted-credentials)
+  and a nonempty [bearer-token suffix](https://www.rfc-editor.org/rfc/rfc6750#section-2.1).
+  The 512-character limit bounds local input and the bridge payload. The provider
+  documents an opaque string and its example length is not a schema constraint.
   The OpenAI BYOK path rejects the OpenRouter prefix, including when issuing a
   lease for a previously saved key. Other keys retain the OpenAI validation
   and routing behavior. E1 does not check a key's validity with OpenRouter.

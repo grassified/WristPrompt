@@ -46,13 +46,14 @@ internal object OpenRouterKeyProtocol {
     const val VERSION = 1
     const val START_PATH = "/wristprompt/v1/openrouter-key/start"
     const val TRANSFER_PATH = "/wristprompt/v1/openrouter-key/transfer"
-    const val KEY_LENGTH = 73
-    private const val MAX_BYTES = 1024
+    const val MAX_KEY_LENGTH = 512
+    private const val MAX_BYTES = 2048
     private const val KEY_PREFIX = "sk-or-"
-    private val keyFormat = Regex("sk-or-v1-[0-9a-f]{64}")
+    // OpenRouter documents the v1 namespace. The schema specifies an opaque bearer string.
+    private val keyFormat = Regex("sk-or-v1-[A-Za-z0-9._~+/-]+=*")
     private val nodeFormat = Regex("[!-~]{1,128}")
 
-    fun validKey(key: String) = keyFormat.matches(key)
+    fun validKey(key: String) = key.length <= MAX_KEY_LENGTH && keyFormat.matches(key)
     fun hasOpenRouterPrefix(key: String) = key.startsWith(KEY_PREFIX, ignoreCase = true)
 
     fun validate(binding: OpenRouterKeyBinding) {

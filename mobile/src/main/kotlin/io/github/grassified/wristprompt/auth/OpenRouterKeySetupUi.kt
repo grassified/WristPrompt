@@ -41,7 +41,7 @@ internal fun OpenRouterKeySetupUi(model: PhoneOpenRouterKeyViewModel) {
             OutlinedSecureTextField(
                 state = entry, label = { Text("Your OpenRouter API key") },
                 textObfuscationMode = TextObfuscationMode.Hidden,
-                inputTransformation = InputTransformation.maxLength(OpenRouterKeyProtocol.KEY_LENGTH),
+                inputTransformation = InputTransformation.maxLength(OpenRouterKeyProtocol.MAX_KEY_LENGTH),
             )
             Button(onClick = { model.submit(binding, entry.text.toString()) }) { Text("Transfer OpenRouter key") }
         }
