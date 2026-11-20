@@ -3,6 +3,8 @@ package io.github.grassified.wristprompt
 import io.github.grassified.wristprompt.auth.WatchProfiles
 import io.github.grassified.wristprompt.auth.ApiKeyRepository
 import io.github.grassified.wristprompt.auth.ApiKeySetupBridge
+import io.github.grassified.wristprompt.auth.OpenRouterKeyRepository
+import io.github.grassified.wristprompt.auth.OpenRouterKeySetupBridge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +43,11 @@ class WristPromptApplication : Application() {
     private val sessionClock = SessionClock.SYSTEM
     val profiles by lazy { WatchProfiles(EncryptedRecord(this, "chatgpt_profiles"), now = sessionClock) }
     val apiKeys by lazy { ApiKeyRepository(EncryptedRecord(this, "api_key"), sessionClock) }
+    internal val openRouterKeys by lazy { OpenRouterKeyRepository(EncryptedRecord(this, OpenRouterKeyRepository.RECORD_NAME)) }
+    internal val openRouterSetup by lazy {
+        OpenRouterKeySetupBridge(openRouterKeys, hostIds::getOrCreate, connectivity::localNodeId,
+            connectivity::reachablePeers, connectivity::request)
+    }
     val conversations by lazy { io.github.grassified.wristprompt.storage.SqliteConversationStore(this) }
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     val credentials by lazy { CredentialRouter(profiles, apiKeys, refresh::refresh, appScope) }

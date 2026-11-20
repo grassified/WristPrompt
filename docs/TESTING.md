@@ -34,6 +34,9 @@ python3 -m unittest discover -s tools -p 'test_*.py'
 git diff --check
 ```
 
+For E1 credential and transfer checks on disposable phone and Wear emulators,
+see [E1 credential setup](V0_2_0_E1_CREDENTIALS.md#repeatable-emulator-checks).
+
 Shared tests compile into both apps. Use `--tests` for the affected actual suite.
 Ordinary validation release output is unsigned/unminified; compilation is not release readiness.
 No stable binaries or signing keys should be uploaded by this workflow.

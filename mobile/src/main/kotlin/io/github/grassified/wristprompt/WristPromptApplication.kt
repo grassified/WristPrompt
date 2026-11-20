@@ -2,6 +2,7 @@ package io.github.grassified.wristprompt
 
 import io.github.grassified.wristprompt.auth.IssuedRegistrationStore
 import io.github.grassified.wristprompt.auth.ApiKeyInbox
+import io.github.grassified.wristprompt.auth.OpenRouterKeyInbox
 import io.github.grassified.wristprompt.auth.OpenAiAuthorization
 import io.github.grassified.wristprompt.storage.EncryptedRecord
 import io.github.grassified.wristprompt.presets.PresetRepository
@@ -32,6 +33,7 @@ class WristPromptApplication : Application() {
     val issuedRegistrations by lazy { IssuedRegistrationStore(EncryptedRecord(this, "issued_registrations")) }
     val authorization by lazy { OpenAiAuthorization() }
     val apiKeyInbox by lazy { ApiKeyInbox(connectivity::reachablePeers) }
+    internal val openRouterKeyInbox by lazy { OpenRouterKeyInbox(connectivity::localNodeId, connectivity::reachablePeers) }
     val authInbox by lazy { AuthRequestInbox(bridgeStore) }
     val authReceiver by lazy { AuthStartReceiver(authInbox, connectivity::reachablePeers) }
 }

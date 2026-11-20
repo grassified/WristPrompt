@@ -56,9 +56,15 @@ internal fun WearShell(auth: WatchAuthViewModel, settings: ApiKeySettingsViewMod
             io.github.grassified.wristprompt.images.WatchImagesViewModel(app.images, app.imageSync::refresh)
         }
     })
+    val openRouter: OpenRouterKeySettingsViewModel = viewModel(factory = viewModelFactory {
+        initializer {
+            val app = context.applicationContext as io.github.grassified.wristprompt.WristPromptApplication
+            OpenRouterKeySettingsViewModel(app.openRouterKeys, app.openRouterSetup)
+        }
+    })
     WearShellContent(accounts, bridge, key, setup, changing, proof,
         ConnectionActions(auth::start, auth::select, auth::signOut, auth::confirmPlanNotice,
-            settings::selectMode, settings::request, settings::remove), presets = presets, photos = photos)
+            settings::selectMode, settings::request, settings::remove), presets = presets, photos = photos, openRouter = openRouter)
 }
 
 internal data class ConnectionActions(
@@ -75,6 +81,7 @@ internal fun WearShellContent(
     supplementalGuidance: String? = null, presentationMetrics: PresentationMetrics? = null,
     presets: io.github.grassified.wristprompt.presets.WatchPresetsViewModel? = null,
     photos: io.github.grassified.wristprompt.images.WatchImagesViewModel? = null,
+    openRouter: OpenRouterKeySettingsViewModel? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val appVersion = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
@@ -106,6 +113,8 @@ internal fun WearShellContent(
             catch (_: ActivityNotFoundException) { composer.discard(); inputPending = false; inputUnavailable = true }
         }
     }
+    val openRouterState = openRouter?.state?.collectAsStateWithLifecycle()?.value
+    val openRouterStatus = openRouter?.status?.collectAsStateWithLifecycle()?.value
     val ui = shellPresentation(accounts, key, state, bridge, changing)
     val messages = (ApiProblem.entries.map(::problemText) + listOf(
         R.string.setup_storage_error, R.string.signout_confirmed, R.string.signout_unconfirmed,
@@ -207,8 +216,13 @@ internal fun WearShellContent(
                                     (recovery != RecoveryAction.MODELS || ui.proofAvailable))
 
                             }
-                            Surface.CONNECTION -> connectionItems(ui, accounts, key, setup, changing, actions, proof, { navigation.open(Surface.DETAILS) }) {
-                                proof.manageUsage(); navigation.open(Surface.DETAILS)
+                            Surface.CONNECTION -> {
+                                connectionItems(ui, accounts, key, setup, changing, actions, proof, { navigation.open(Surface.DETAILS) }) {
+                                    proof.manageUsage(); navigation.open(Surface.DETAILS)
+                                }
+                                if (openRouter != null && openRouterState != null && openRouterStatus != null) {
+                                    openRouterKeyItems(openRouterState, openRouterStatus, openRouter::request, openRouter::remove)
+                                }
                             }
                             Surface.DETAILS -> {
                                 item { ShellText("Diagnostics", heading = true) }
