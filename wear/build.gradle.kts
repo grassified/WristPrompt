@@ -16,7 +16,9 @@ android {
         targetSdk = 36
         versionCode = 3
         versionName = "0.1.2"
-        testInstrumentationRunner = if (providers.gradleProperty("wristprompt.mathAcceptance").orNull == "true")
+        testInstrumentationRunner = if (providers.gradleProperty("wristprompt.openRouterKeyAcceptance").orNull == "true")
+            "io.github.grassified.wristprompt.auth.OpenRouterKeyInstrumentation"
+        else if (providers.gradleProperty("wristprompt.mathAcceptance").orNull == "true")
             "io.github.grassified.wristprompt.ui.MathRenderingInstrumentation"
         else if (providers.gradleProperty("wristprompt.generationAcceptance").orNull == "true")
             "io.github.grassified.wristprompt.storage.ImageGenerationInstrumentation"

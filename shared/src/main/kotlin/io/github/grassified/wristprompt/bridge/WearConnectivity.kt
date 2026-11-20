@@ -14,6 +14,9 @@ interface AuthBridgeTransport {
 
 /** Matching package/signature is enforced by Data Layer. Discovery alone is not credential consent. */
 class WearConnectivity(context: Context, private val peerCapability: String) : AuthBridgeTransport {
+    private val nodeClient = Wearable.getNodeClient(context.applicationContext)
+    suspend fun localNodeId(): String = nodeClient.localNode.await().id
+
     private val capabilityClient = Wearable.getCapabilityClient(context.applicationContext)
     private val messageClient = Wearable.getMessageClient(context.applicationContext)
 

@@ -16,7 +16,9 @@ android {
         targetSdk = 36
         versionCode = 3
         versionName = "0.1.2"
-        testInstrumentationRunner = "io.github.grassified.wristprompt.images.ImageImportInstrumentation"
+        testInstrumentationRunner = if (providers.gradleProperty("wristprompt.openRouterKeyAcceptance").orNull == "true")
+            "io.github.grassified.wristprompt.auth.OpenRouterKeyInstrumentation"
+        else "io.github.grassified.wristprompt.images.ImageImportInstrumentation"
     }
 
     buildFeatures {

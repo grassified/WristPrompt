@@ -35,7 +35,7 @@ class PhoneApiKeyViewModel(private val inbox: ApiKeyInbox, private val send: sus
         val context = inbox.state.value ?: return
         if (!context.request.isFresh(now())) { clearSecrets(); mutableStage.value = PhoneKeyStage.EXPIRED; return }
         if (envelope == null) {
-            if (!ApiKeyProtocol.sane(key.value)) { mutableStage.value = PhoneKeyStage.FORMAT_ERROR; return }
+            if (!ApiKeyProtocol.forOpenAi(key.value)) { mutableStage.value = PhoneKeyStage.FORMAT_ERROR; return }
             transferId = BridgeProtocol.newRequestId()
             val bytes = ProfileProtocol.encode(ApiKeyTransfer(1, context.request.requestId, transferId!!, context.request.hostId, key.value))
             if (bytes.size > ApiKeyProtocol.MAX_BYTES) { bytes.fill(0); transferId = null; mutableStage.value = PhoneKeyStage.FORMAT_ERROR; return }

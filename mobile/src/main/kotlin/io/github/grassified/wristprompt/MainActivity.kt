@@ -45,6 +45,12 @@ class MainActivity : ComponentActivity() {
             val api: PhoneApiKeyViewModel = viewModel(factory = viewModelFactory {
                 initializer { val app = application as WristPromptApplication; PhoneApiKeyViewModel(app.apiKeyInbox, app.connectivity::request) }
             })
+            val openRouter: PhoneOpenRouterKeyViewModel = viewModel(factory = viewModelFactory {
+                initializer {
+                    val app = application as WristPromptApplication
+                    PhoneOpenRouterKeyViewModel(app.openRouterKeyInbox, app.connectivity::request)
+                }
+            })
             val presets: PresetsViewModel = viewModel(factory = viewModelFactory {
                 initializer { PresetsViewModel((application as WristPromptApplication).presets) }
             })
@@ -102,6 +108,8 @@ class MainActivity : ComponentActivity() {
                         Text(stringResource(R.string.no_inference))
                         HorizontalDivider()
                         ApiKeySetupUi(api)
+                        HorizontalDivider()
+                        OpenRouterKeySetupUi(openRouter)
                         HorizontalDivider()
                         PresetsUi(presets, presetSync, presetApp::queuePresets)
                         HorizontalDivider()

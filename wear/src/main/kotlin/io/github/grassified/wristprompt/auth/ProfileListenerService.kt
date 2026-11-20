@@ -10,11 +10,14 @@ import kotlinx.coroutines.tasks.asTask
 class ProfileListenerService : WearableListenerService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     override fun onRequest(nodeId: String, path: String, request: ByteArray): Task<ByteArray>? {
-        if (path !in setOf(ProfileProtocol.CONTEXT_PATH, ProfileProtocol.TRANSFER_PATH, ProfileProtocol.FAILURE_PATH, ApiKeyProtocol.TRANSFER_PATH)) return null
+        if (path !in setOf(ProfileProtocol.CONTEXT_PATH, ProfileProtocol.TRANSFER_PATH, ProfileProtocol.FAILURE_PATH, ApiKeyProtocol.TRANSFER_PATH, OpenRouterKeyProtocol.TRANSFER_PATH)) return null
         return scope.async {
             try {
                 withTimeout(BridgeProtocol.TIMEOUT_MS) {
                     val app = application as WristPromptApplication
+                    if (path == OpenRouterKeyProtocol.TRANSFER_PATH) {
+                        return@withTimeout app.openRouterSetup.receive(nodeId, request)
+                    }
                     if (path == ApiKeyProtocol.TRANSFER_PATH) {
                         val revision = app.apiKeys.state.value.keyRevision
                         val ack = app.apiKeys.accept(nodeId, request)
@@ -35,6 +38,8 @@ class ProfileListenerService : WearableListenerService() {
             } catch (_: Exception) {
                 BridgeLog.warn(BridgeDiagnostic.REQUEST_REJECTED)
                 throw BridgeProtocolException()
+            } finally {
+                if (path == OpenRouterKeyProtocol.TRANSFER_PATH) request.fill(0)
             }
         }.asTask()
     }

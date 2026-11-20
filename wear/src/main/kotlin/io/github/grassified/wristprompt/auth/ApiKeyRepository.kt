@@ -86,7 +86,7 @@ class ApiKeyRepository(private val record: SecretRecord, private val now: Sessio
         if (state.value.storageError) throw SecureStorageException()
         val v = read()
         if (v.mode != CredentialMode.OPENAI_API_KEY) throw ApiFailure(ApiProblem.STALE_ACCOUNT)
-        if (deleting || v.key == null) throw ApiFailure(ApiProblem.API_KEY_MISSING)
+        if (deleting || v.key == null || !ApiKeyProtocol.forOpenAi(v.key)) throw ApiFailure(ApiProblem.API_KEY_MISSING)
         CredentialLease(API_CLIENT, v.keyRevision, v.key, Long.MAX_VALUE, CredentialMode.OPENAI_API_KEY, v.modeRevision)
     } }
     suspend fun modeCurrent(mode: CredentialMode, revision: Long): Boolean = withContext(Dispatchers.IO) { mutex.withLock {
@@ -95,7 +95,7 @@ class ApiKeyRepository(private val record: SecretRecord, private val now: Sessio
     } }
     suspend fun current(lease: CredentialLease): Boolean = withContext(Dispatchers.IO) { mutex.withLock {
         val v = read(); !deleting && !state.value.storageError && v.mode == lease.mode && v.modeRevision == lease.modeRevision &&
-            v.keyRevision == lease.generation && v.key == lease.accessToken
+            v.keyRevision == lease.generation && v.key == lease.accessToken && ApiKeyProtocol.forOpenAi(lease.accessToken)
     } }
     suspend fun selectedModel(): String? = withContext(Dispatchers.IO) { mutex.withLock { read().model } }
     suspend fun conversationIdentity(lease: CredentialLease): String = withContext(Dispatchers.IO) { mutex.withLock {

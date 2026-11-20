@@ -66,3 +66,26 @@ internal fun keySetupText(setup: KeySetupStatus): String = when (setup) {
 internal fun accountRowName(accounts: WatchAccountState, account: AccountLabel): String =
     if (accounts.activeClientId == account.clientId && (accounts.reauthorizationRequired || accounts.storageError ||
             accounts.signingOut || accounts.signedOut)) "Sign-in required" else account.label
+
+internal fun ShellListScope.openRouterKeyItems(
+    state: OpenRouterKeyState, status: OpenRouterSetupStatus, request: () -> Unit, remove: () -> Unit,
+) {
+    item { ShellText("OpenRouter API key", heading = true) }
+    item { ShellText(when {
+        state.storageError -> "Secure storage unavailable"
+        state.configured -> "Key saved · OpenRouter chat unavailable"
+        else -> "OpenRouter chat unavailable"
+    }) }
+    val busy = status == OpenRouterSetupStatus.REQUESTING || status == OpenRouterSetupStatus.REMOVING
+    action(if (state.configured) "Change OpenRouter key" else "Set up OpenRouter key", !busy, request)
+    val message = when (status) {
+        OpenRouterSetupStatus.IDLE -> null
+        OpenRouterSetupStatus.REQUESTING -> "Finding paired phone…"
+        OpenRouterSetupStatus.PHONE_READY -> if (state.setupPending) "Open WristPrompt on your phone within two minutes." else null
+        OpenRouterSetupStatus.REMOVING -> "Removing OpenRouter key…"
+        OpenRouterSetupStatus.UNAVAILABLE -> "OpenRouter setup unavailable on the paired phone."
+        OpenRouterSetupStatus.ERROR -> "OpenRouter key operation failed."
+    }
+    if (message != null) item { ShellText(message) }
+    if (state.configured) action("Remove OpenRouter key", !busy, remove)
+}

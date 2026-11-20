@@ -10,12 +10,13 @@ object ApiKeyProtocol {
     const val TRANSFER_PATH = "/wristprompt/v1/api-key/transfer"
     const val MAX_BYTES = 12_288
     fun sane(key: String) = key.length in 8..8192 && key.all { it.code in 33..126 }
+    fun forOpenAi(key: String) = sane(key) && !OpenRouterKeyProtocol.hasOpenRouterPrefix(key)
     fun start(bytes: ByteArray, now: Long): AuthStartRequest = BridgeCodec.decodeRequest(bytes, now)
     fun transfer(bytes: ByteArray): ApiKeyTransfer = try {
         require(bytes.size <= MAX_BYTES)
         ProfileProtocol.decode<ApiKeyTransfer>(bytes).also {
             ProfileProtocol.validate(ContextRequest(it.version, it.requestId, it.hostId))
-            require(BridgeProtocol.isRequestId(it.transferId) && sane(it.key))
+            require(BridgeProtocol.isRequestId(it.transferId) && forOpenAi(it.key))
         }
     } catch (_: Exception) { throw BridgeProtocolException() }
     fun ack(bytes: ByteArray, request: String, transfer: String) = try {

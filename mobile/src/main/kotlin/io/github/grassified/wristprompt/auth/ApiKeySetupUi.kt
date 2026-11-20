@@ -21,7 +21,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
             PhoneKeyStage.RETRY -> "Storage acknowledgement was not received. Retry the same transfer before it expires."
             PhoneKeyStage.ACKNOWLEDGED -> "Secure watch storage acknowledged. Entry cleared. Explicitly select API billing on the watch, then Test API key."
             PhoneKeyStage.EXPIRED -> "Setup request expired. Start again from the watch."
-            PhoneKeyStage.FORMAT_ERROR -> "Use 8–8192 printable non-space characters. Format does not prove validity."
+            PhoneKeyStage.FORMAT_ERROR -> "Enter an OpenAI key with 8–8192 printable non-space characters. Format does not prove validity."
         })
         if (stage in setOf(PhoneKeyStage.READY, PhoneKeyStage.FORMAT_ERROR)) {
             OutlinedTextField(value = key, onValueChange = model::edit, label = { Text("Your OpenAI API key") }, singleLine = true,
