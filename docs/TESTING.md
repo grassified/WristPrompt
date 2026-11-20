@@ -36,6 +36,8 @@ git diff --check
 
 For E1 credential and transfer checks on disposable phone and Wear emulators,
 see [E1 credential setup](V0_2_0_E1_CREDENTIALS.md#repeatable-emulator-checks).
+For route migration, switching and restart evidence, see
+[E2 route selection](V0_2_0_E2_ROUTE_SELECTION.md#verification).
 
 Shared tests compile into both apps. Use `--tests` for the affected actual suite.
 Ordinary validation release output is unsigned/unminified; compilation is not release readiness.

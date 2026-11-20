@@ -81,4 +81,7 @@ class CredentialLease(val clientId: String, val generation: Long, val accessToke
     override fun toString() = SafeDiagnostics.REDACTED
 }
 
-fun interface OpenAiCredentialSource { suspend fun current(): CredentialLease }
+fun interface OpenAiCredentialSource {
+    suspend fun current(): CredentialLease
+    suspend fun current(expected: CredentialLease): CredentialLease = current()
+}

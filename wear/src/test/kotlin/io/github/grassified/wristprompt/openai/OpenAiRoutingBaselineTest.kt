@@ -25,7 +25,7 @@ class OpenAiRoutingBaselineTest {
             {"slug":"hidden-model","display_name":"Hidden","visibility":"hidden"},
             {"slug":"second-model","display_name":"Second","visibility":"list"}]}"""
         val apiCatalog = """{"data":[{"id":"gpt-6.1-sol"},{"id":"gpt-6.1-sol-unknown"}]}"""
-        withRoutes { router, keys ->
+        withRoutes { router, keys, routes ->
             val requests = mutableListOf<WireRequest>()
             val http = OpenAiHttp(OkHttpClient.Builder().addInterceptor { chain ->
                 val request = chain.request()
@@ -58,7 +58,7 @@ class OpenAiRoutingBaselineTest {
             router.selectModel(plan.credential, "second-model")
             assertEquals("synthetic answer", session.chat(plan, "second-model", input) {}.output)
 
-            keys.selectMode(CredentialMode.OPENAI_API_KEY)
+            assertTrue(session.changeRouteWhenIdle { routes.select(InferenceRoute.OPENAI_API_KEY) })
             val api = session.catalog()
             assertEquals(listOf("gpt-6.1-sol", "gpt-6.1-sol-unknown"), api.models.map { it.displayName })
             assertNotEquals(planOwner, router.conversationIdentity(api.credential))
@@ -74,17 +74,29 @@ class OpenAiRoutingBaselineTest {
             router.selectModel(api.credential, reviewed.slug)
             assertTrue(session.chat(api, reviewed.slug, input, explicitThinking) {}.completed)
             assertEquals(reviewed.slug, router.selectedModel(api.credential))
+            val keyOwner = router.conversationIdentity(api.credential)
             expectProblem(ApiProblem.NO_MODELS) { session.chat(api, "not-in-catalog", input) {} }
             expectProblem(ApiProblem.THINKING_UNSUPPORTED) {
                 session.chat(api, api.models.last().slug, input, explicitThinking) {}
             }
 
-            keys.selectMode(CredentialMode.CHATGPT_PLAN)
+            assertTrue(session.changeRouteWhenIdle { routes.select(InferenceRoute.OPENROUTER_API_KEY) })
+            expectProblem(ApiProblem.STALE_ACCOUNT) { session.catalog() }
+            expectProblem(ApiProblem.STALE_ACCOUNT) { session.chat(api, reviewed.slug, input) {} }
+            assertFalse(router.isCurrent(api.credential))
+            expectProblem(ApiProblem.STALE_ACCOUNT) { router.selectedModel(api.credential) }
+            expectProblem(ApiProblem.STALE_ACCOUNT) { router.selectModel(api.credential, "stale-model") }
+            assertTrue(session.changeRouteWhenIdle { routes.select(InferenceRoute.OPENAI_API_KEY) })
+            val returnedKey = router.current()
+            assertEquals(keyOwner, router.conversationIdentity(returnedKey))
+            assertEquals(reviewed.slug, router.selectedModel(returnedKey))
+            expectProblem(ApiProblem.STALE_ACCOUNT) { session.chat(api, reviewed.slug, input) {} }
+            assertTrue(session.changeRouteWhenIdle { routes.select(InferenceRoute.CHATGPT_PLAN) })
             val returned = router.current()
             assertEquals(planOwner, router.conversationIdentity(returned))
             assertEquals("second-model", router.selectedModel(returned))
             expectProblem(ApiProblem.STALE_ACCOUNT) { session.chat(plan, "second-model", input) {} }
-            keys.selectMode(CredentialMode.OPENAI_API_KEY)
+            assertTrue(session.changeRouteWhenIdle { routes.select(InferenceRoute.OPENAI_API_KEY) })
             keys.remove()
             expectProblem(ApiProblem.API_KEY_MISSING) { session.catalog() }
 
@@ -110,7 +122,17 @@ class OpenAiRoutingBaselineTest {
         }
     }
 
-    private suspend fun withRoutes(block: suspend (CredentialRouter, ApiKeyRepository) -> Unit) = coroutineScope {
+    @Test fun openAiTransportRejectsAnOpenRouterBearerBeforeHttp(): Unit = runBlocking {
+        val http = OpenAiHttp(OkHttpClient.Builder().addInterceptor { error("Unexpected HTTP dispatch") }.build())
+        val provider = OpenAiProvider(http)
+        for (mode in CredentialMode.entries) {
+            val lease = CredentialLease("synthetic-client", 0, "sk-or-v1-Synthetic_42", Long.MAX_VALUE, mode)
+            expectProblem(ApiProblem.STALE_ACCOUNT) { provider.models(lease) }
+            expectProblem(ApiProblem.STALE_ACCOUNT) { provider.stream(lease, "synthetic-model") {} }
+        }
+    }
+
+    private suspend fun withRoutes(block: suspend (CredentialRouter, ApiKeyRepository, ActiveRouteRepository) -> Unit) = coroutineScope {
         val now = 1_000_000L
         val profiles = WatchProfiles(MemoryRecord(), now = { now })
         val keys = ApiKeyRepository(MemoryRecord()) { now }
@@ -127,9 +149,18 @@ class OpenAiRoutingBaselineTest {
         keys.prepare("synthetic-phone", setup)
         keys.accept("synthetic-phone", ProfileProtocol.encode(ApiKeyTransfer(1, setup.requestId,
             BridgeProtocol.newRequestId(), host, "synthetic-api-key")))
+        val openRouter = OpenRouterKeyRepository(MemoryRecord()) { now }
+        val openRouterBinding = openRouter.prepare("synthetic-watch", "synthetic-phone", host)
+        openRouter.accept("synthetic-phone", "synthetic-watch", host, ProfileProtocol.encode(
+            OpenRouterKeyTransfer(openRouterBinding, "sk-or-v1-Synthetic_OpenRouter_Bearer"),
+        ))
+        val openRouterLease = checkNotNull(openRouter.credential())
+        val routes = ActiveRouteRepository(RoutePreferenceFixture()) { keys.snapshot().mode }
+        routes.load()
         val routingScope = CoroutineScope(coroutineContext + Job(coroutineContext[Job]))
         try {
-            block(CredentialRouter(profiles, keys, { error("Unexpected refresh of synthetic credential") }, routingScope), keys)
+            block(CredentialRouter(profiles, keys, { error("Unexpected refresh of synthetic credential") }, routingScope, routes), keys, routes)
+            assertTrue(openRouter.current(openRouterLease))
         } finally {
             routingScope.cancel()
         }

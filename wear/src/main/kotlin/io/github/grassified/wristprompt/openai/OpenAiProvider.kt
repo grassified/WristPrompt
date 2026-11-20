@@ -3,6 +3,7 @@ package io.github.grassified.wristprompt.openai
 import io.github.grassified.wristprompt.auth.CredentialProfile
 import io.github.grassified.wristprompt.auth.CredentialMode
 import io.github.grassified.wristprompt.auth.OpenAiAuth
+import io.github.grassified.wristprompt.auth.OpenRouterKeyProtocol
 import kotlinx.serialization.json.JsonObject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -29,11 +30,18 @@ interface AiProvider {
 }
 
 class OpenAiProvider(private val http: OpenAiHttp) : AiProvider {
+    private fun authorization(credential: CredentialLease): String {
+        if (OpenRouterKeyProtocol.hasOpenRouterPrefix(credential.accessToken)) {
+            throw ApiFailure(ApiProblem.STALE_ACCOUNT, requestNotSent = true)
+        }
+        return "Bearer ${credential.accessToken}"
+    }
+
     override suspend fun generateImage(credential: CredentialLease, model: AiModel, input: List<JsonObject>,
         onEvent: suspend (ResponseEvent) -> Unit) =
         streamRequest(credential, OpenAiRequestAdapter(model, credential.mode).encodeImageGeneration(input), onEvent, generation = true)
     override suspend fun models(credential: CredentialLease): List<AiModel> = http.execute(
-        Request.Builder().url(ResponsesProtocol.MODELS_URL).header("Authorization", "Bearer ${credential.accessToken}")
+        Request.Builder().url(ResponsesProtocol.MODELS_URL).header("Authorization", authorization(credential))
             .header("Accept", "application/json").build(), 30,
     ) { response ->
         if (response.code != 200) throw http.failure(response, mode = credential.mode)
@@ -64,7 +72,7 @@ class OpenAiProvider(private val http: OpenAiHttp) : AiProvider {
         var started = false
         try {
             http.execute(Request.Builder().url(ResponsesProtocol.RESPONSES_URL)
-                .header("Authorization", "Bearer ${credential.accessToken}").header("Accept", "text/event-stream")
+                .header("Authorization", authorization(credential)).header("Accept", "text/event-stream")
                 .post(body.toRequestBody("application/json".toMediaType())).build()) { response ->
                 if (response.code != 200) throw http.failure(response, mode = credential.mode)
                 val mediaType = response.body.contentType()?.let { "${it.type}/${it.subtype}" }

@@ -16,14 +16,6 @@ class ApiKeySettingsViewModel(private val keys: ApiKeyRepository, private val br
     private val mutableBusy = MutableStateFlow(false)
     val busy = mutableBusy.asStateFlow()
     init { viewModelScope.launch { keys.load() } }
-    fun selectMode(mode: CredentialMode) {
-        if (busy.value) return
-        mutableBusy.value = true
-        viewModelScope.launch {
-        inference.cancelAll()
-        try { keys.selectMode(mode) } catch (_: Exception) { mutableSetup.value = KeySetupStatus.ERROR }
-        finally { mutableBusy.value = false }
-    } }
     fun remove() {
         if (busy.value) return
         mutableBusy.value = true

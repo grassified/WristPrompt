@@ -64,12 +64,12 @@ internal fun WearShell(auth: WatchAuthViewModel, settings: ApiKeySettingsViewMod
     })
     WearShellContent(accounts, bridge, key, setup, changing, proof,
         ConnectionActions(auth::start, auth::select, auth::signOut, auth::confirmPlanNotice,
-            settings::selectMode, settings::request, settings::remove), presets = presets, photos = photos, openRouter = openRouter)
+            settings::request, settings::remove), presets = presets, photos = photos, openRouter = openRouter)
 }
 
 internal data class ConnectionActions(
     val start: () -> Unit, val select: (String?) -> Unit, val signOut: () -> Unit,
-    val confirm: () -> Unit, val mode: (CredentialMode) -> Unit,
+    val confirm: () -> Unit,
     val request: () -> Unit, val remove: () -> Unit,
 )
 
@@ -115,7 +115,37 @@ internal fun WearShellContent(
     }
     val openRouterState = openRouter?.state?.collectAsStateWithLifecycle()?.value
     val openRouterStatus = openRouter?.status?.collectAsStateWithLifecycle()?.value
-    val ui = shellPresentation(accounts, key, state, bridge, changing)
+    val routeState = proof.routeSelection?.collectAsStateWithLifecycle()?.value
+    val selectorState = routeState ?: RouteSelectionState(
+        RouteSelection(InferenceRoute.openAi(key.mode), key.modeRevision).takeIf { key.loaded && !key.storageError }, key.storageError,
+    )
+    val activeMode = selectorState.selection?.route?.openAiMode
+    val routeContextReady = routeState == null || routeState.selection?.let {
+        state.modeRevision == it.revision && (activeMode == null || state.mode == activeMode)
+    } == true
+    val selecting by proof.routeSwitching.collectAsStateWithLifecycle()
+    val switchBusy by proof.switchBusy.collectAsStateWithLifecycle()
+    var pendingRoute by remember(surface) { mutableStateOf<InferenceRoute?>(null) }
+    var switchMessage by remember(surface) { mutableStateOf<String?>(null) }
+    fun requestRoute(route: InferenceRoute, confirmed: Boolean = false) {
+        switchMessage = null
+        when (proof.switchRoute(route, composer.pending || inputPending, confirmed)) {
+            RouteSwitchRequest.CONFIRM_DISCARD -> pendingRoute = route
+            RouteSwitchRequest.BUSY -> {
+                pendingRoute = null
+                switchMessage = "Stop or finish the current operation before switching."
+            }
+            RouteSwitchRequest.STARTED -> {
+                composer.discard()
+                inputPending = false
+                pendingRoute = null
+            }
+            RouteSwitchRequest.UNAVAILABLE -> switchMessage = "Route selection is unavailable."
+            RouteSwitchRequest.ALREADY_SELECTED -> pendingRoute = null
+        }
+    }
+    val connectionChanging = changing || selecting
+    val ui = shellPresentation(accounts, key, state, bridge, connectionChanging, routeState)
     val messages = (ApiProblem.entries.map(::problemText) + listOf(
         R.string.setup_storage_error, R.string.signout_confirmed, R.string.signout_unconfirmed,
         R.string.authorization_failed, R.string.authorization_expired, R.string.proof_cancelled,
@@ -123,11 +153,23 @@ internal fun WearShellContent(
         R.string.plan_welcome, R.string.got_it, R.string.bridge_idle, R.string.looking_for_phone,
         R.string.auth_request_sent, R.string.companion_unavailable, R.string.bridge_error, R.string.multiple_phones,
     )).associateWith { stringResource(it) }
-    val welcome = accounts.planWelcome
-    val back = { navigation.back() }
+    val welcome = accounts.planWelcome && activeMode == CredentialMode.CHATGPT_PLAN
+    val back = { if (pendingRoute != null) pendingRoute = null else navigation.back() }
     val interaction = ShellInteraction(proof, navigation, write)
     BackHandler(enabled = welcome || surface != Surface.CHAT) {
         if (welcome) actions.confirm() else back()
+    }
+    pendingRoute?.let { target ->
+        AlertDialog(
+            visible = true,
+            onDismissRequest = { pendingRoute = null },
+            title = { Text("Discard draft?") },
+            text = { Text("Switch to ${target.label()} and clear unsent text and pending photos.") },
+        ) {
+            item { Button(onClick = { pendingRoute = null }, modifier = Modifier.fillMaxWidth(), label = { Text("Keep draft") }) }
+            item { Button(onClick = { requestRoute(target, confirmed = true) }, modifier = Modifier.fillMaxWidth(),
+                label = { Text("Discard and switch") }) }
+        }
     }
     AppScaffold(timeText = {}) {
         Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -138,6 +180,11 @@ internal fun WearShellContent(
                         paragraphs(messages.getValue(R.string.plan_welcome))
                         action(messages.getValue(R.string.got_it), onClick = actions.confirm)
                     }
+                    !routeContextReady && surface in setOf(Surface.CHAT, Surface.COMPOSER, Surface.HISTORY, Surface.IMAGES, Surface.PROMPTS) ->
+                        ShellList(Modifier.fillMaxSize(), rememberShellScroll(navigation, surface)) {
+                            item { ShellText(ui.status) }
+                            action("Account & Connection") { navigation.open(Surface.CONNECTION) }
+                        }
                     surface == Surface.CHAT -> ChatScreen(proof, state, ui, navigation, supplementalGuidance, presentationMetrics)
                     surface == Surface.COMPOSER -> ComposerScreen(proof, state, ui, navigation,
                         interruptedInput, inputUnavailable, write, photos)
@@ -170,7 +217,7 @@ internal fun WearShellContent(
                             Surface.PROOF -> {
                                 item { ShellText("Inference proof", heading = true) }
                                 paragraphs("Diagnostic test only. This is separate from your chat replies.")
-                                paragraphs("Expected output: ${ResponsesProtocol.expected(state.mode)}")
+                                activeMode?.let { paragraphs("Expected output: ${ResponsesProtocol.expected(it)}") }
                                 state.attemptId?.let { item { ShellText("Test attempt: $it") } }
                                 item { ShellText(ui.status) }
                                 ui.account?.let { item { ShellText(it, compact = true) } }
@@ -182,10 +229,10 @@ internal fun WearShellContent(
                                         action("Choose model", enabled = state.models.isNotEmpty(),
                                             onClick = { navigation.open(Surface.MODELS) })
                                     }
-                                } else if (key.loaded && !key.storageError && !changing) {
-                                    if (key.mode == CredentialMode.CHATGPT_PLAN && ui.showContinue) {
+                                } else if (!connectionChanging) {
+                                    if (activeMode == CredentialMode.CHATGPT_PLAN && ui.showContinue) {
                                         continueAction(ui.canContinue, actions.start)
-                                    } else if (key.mode == CredentialMode.OPENAI_API_KEY && !key.configured) {
+                                    } else if (activeMode == CredentialMode.OPENAI_API_KEY && !key.configured) {
                                         action("Set up API key", setup != KeySetupStatus.REQUESTING, actions.request)
                                     }
                                 }
@@ -193,7 +240,7 @@ internal fun WearShellContent(
                                     item { ShellText(if (state.completedObserved) "Test output · response.completed observed" else "Test output · not completed") }
                                     paragraphs(state.output)
                                 }
-                                if (key.mode == CredentialMode.CHATGPT_PLAN && state.problem in
+                                if (activeMode == CredentialMode.CHATGPT_PLAN && state.problem in
                                     setOf(ApiProblem.USAGE_LIMIT, ApiProblem.USAGE_UNAVAILABLE, ApiProblem.NOT_ELIGIBLE)) {
                                     action("Manage usage", onClick = { proof.manageUsage(); navigation.open(Surface.DETAILS) })
                                 }
@@ -205,7 +252,7 @@ internal fun WearShellContent(
                                 item { ShellText("Choose model", heading = true) }
                                 val catalog = ui.recovery ?: modelCatalogPresentation(state)
                                 catalog?.let { item { ShellText(it.text) } }
-                                if (state.mode == key.mode) {
+                                if (state.mode == activeMode && (routeState == null || state.modeRevision == routeState.selection?.revision)) {
                                     modelItems(state.models, state.selectedSlug,
                                         enabled = ui.proofAvailable && !state.busy && !chatBusy && !state.thinkingSaving, onSelect = proof::select)
                                     thinkingItems(state, enabled = ui.proofAvailable && !state.busy && !chatBusy,
@@ -217,7 +264,12 @@ internal fun WearShellContent(
 
                             }
                             Surface.CONNECTION -> {
-                                connectionItems(ui, accounts, key, setup, changing, actions, proof, { navigation.open(Surface.DETAILS) }) {
+                                connectionItems(ui, accounts, key, setup, connectionChanging, actions, proof,
+                                    selectorState,
+                                    switchMessage ?: "Wait for the current request to finish stopping.".takeIf { switchBusy },
+                                    onRoute = { requestRoute(it) },
+                                    onDiagnostics = { navigation.open(Surface.DETAILS) },
+                                ) {
                                     proof.manageUsage(); navigation.open(Surface.DETAILS)
                                 }
                                 if (openRouter != null && openRouterState != null && openRouterStatus != null) {
@@ -244,7 +296,7 @@ internal fun WearShellContent(
                                 }))
                                 if (accounts.failed) paragraphs(messages.getValue(R.string.authorization_failed))
                                 if (accounts.expired) paragraphs(messages.getValue(R.string.authorization_expired))
-                                if (state.mode == key.mode) {
+                                if (state.mode == activeMode && (routeState == null || state.modeRevision == routeState.selection?.revision)) {
                                     state.problem?.let { paragraphs(messages.getValue(problemText(it))) }
                                     if (state.stage == ProofStage.CANCELLED) paragraphs(messages.getValue(R.string.proof_cancelled))
                                     if (state.stage == ProofStage.OUTPUT_MISMATCH) paragraphs(messages.getValue(R.string.proof_mismatch))
@@ -254,10 +306,12 @@ internal fun WearShellContent(
                                     if (state.completedObserved) item { ShellText("Observed: response.completed") }
                                 }
                                 if (accounts.sessionRenewed) item { ShellText(stringResource(R.string.session_renewed)) }
-                                if (key.mode == CredentialMode.OPENAI_API_KEY) paragraphs(messages.getValue(R.string.api_model_warning))
-                                if (key.mode == CredentialMode.CHATGPT_PLAN && state.usageHint) paragraphs(messages.getValue(R.string.manage_usage_hint))
-                                paragraphs(if (key.mode == CredentialMode.CHATGPT_PLAN) "Test inference sends: Reply with exactly: WristPrompt works."
-                                    else "Test inference sends: Reply exactly: BYOK path works. API billing applies.")
+                                if (activeMode == CredentialMode.OPENAI_API_KEY) paragraphs(messages.getValue(R.string.api_model_warning))
+                                if (activeMode == CredentialMode.CHATGPT_PLAN && state.usageHint) paragraphs(messages.getValue(R.string.manage_usage_hint))
+                                activeMode?.let { mode ->
+                                    paragraphs(if (mode == CredentialMode.CHATGPT_PLAN) "Test inference sends: Reply with exactly: WristPrompt works."
+                                        else "Test inference sends: Reply exactly: BYOK path works. API billing applies.")
+                                }
                             }
                             Surface.OUTPUT -> {
                                 item { ShellText("Proof output", heading = true) }
@@ -295,7 +349,8 @@ private fun PrimaryControl(
         val ready by sendSource.first.collectAsStateWithLifecycle(initialValue = sendSource.second)
         ready && ui.proofAvailable && state.selectedSlug != null
     } else true
-    if (action == PrimaryAction.SEND) Text(billingDisclosure(ui.billing),
+    if (action == PrimaryAction.SEND) Text(
+        if (ui.billing == "ChatGPT plan") "OpenAI · ChatGPT plan" else billingDisclosure(ui.billing),
         modifier = Modifier.fillMaxWidth().padding(horizontal = 36.dp),
         style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
     // Latest shares the existing measured control band. Stop retains its own full tap target.

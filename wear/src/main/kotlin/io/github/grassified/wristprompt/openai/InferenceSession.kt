@@ -1,7 +1,6 @@
 package io.github.grassified.wristprompt.openai
 
 import io.github.grassified.wristprompt.bridge.SafeDiagnostics
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.coroutineScope
@@ -22,16 +21,47 @@ class InferenceSession(
     private val isCurrent: suspend (CredentialLease) -> Boolean,
 ) {
     private val generation = Mutex()
-    private val active = ConcurrentHashMap<Job, String>()
-    fun cancelAll() { active.keys.forEach { it.cancel(CancellationException("Credential mode changed")) } }
-    fun cancel(clientId: String) {
-        active.forEach { (job, client) -> if (client == clientId) job.cancel(CancellationException("ChatGPT session stopped")) }
+    private val gate = Any()
+    private val active = mutableMapOf<Job, String?>()
+    private var changingRoute = false
+
+    private fun register(job: Job, clientId: String?) = synchronized(gate) {
+        if (changingRoute) throw ApiFailure(ApiProblem.STALE_ACCOUNT, requestNotSent = true)
+        active[job] = clientId
     }
+
+    private fun release(job: Job) = synchronized(gate) { active.remove(job) }
+
+    internal suspend fun changeRouteWhenIdle(change: suspend () -> Unit): Boolean {
+        synchronized(gate) {
+            if (changingRoute || active.isNotEmpty()) return false
+            changingRoute = true
+        }
+        try {
+            change()
+            return true
+        } finally {
+            synchronized(gate) { changingRoute = false }
+        }
+    }
+
+    fun cancelAll() {
+        val jobs = synchronized(gate) { active.keys.toList() }
+        jobs.forEach { it.cancel(CancellationException("Credential mode changed")) }
+    }
+    fun cancel(clientId: String) {
+        val jobs = synchronized(gate) { active.filterValues { it == clientId }.keys.toList() }
+        jobs.forEach { it.cancel(CancellationException("ChatGPT session stopped")) }
+    }
+
     suspend fun catalog(): PreparedCatalog = coroutineScope {
-        val lease = credentials.current()
         val job = currentCoroutineContext().job
-        active[job] = lease.clientId
-        try { catalog(lease) } finally { active.remove(job) }
+        register(job, null)
+        try {
+            val lease = credentials.current()
+            synchronized(gate) { active[job] = lease.clientId }
+            catalog(lease)
+        } finally { release(job) }
     }
     suspend fun validate(catalog: PreparedCatalog) {
         currentCoroutineContext().ensureActive()
@@ -64,10 +94,10 @@ class InferenceSession(
         onCatalog: (PreparedCatalog) -> Unit, onProgress: suspend (StreamResult) -> Unit, image: Boolean = false): StreamResult = coroutineScope {
         val job = currentCoroutineContext().job
         // Track queued work too, so account/mode cancellation cannot miss a waiting generation.
-        active[job] = catalog.credential.clientId
+        register(job, catalog.credential.clientId)
         try { generation.withLock {
             job.ensureActive()
-            val current = credentials.current()
+            val current = credentials.current(catalog.credential)
             job.ensureActive()
             // A stale action must never turn into a request for another account or bill.
             if (current.clientId != catalog.credential.clientId || current.generation != catalog.credential.generation ||
@@ -102,6 +132,6 @@ class InferenceSession(
             if (!isCurrent(prepared.credential)) throw ApiFailure(ApiProblem.STALE_ACCOUNT)
             job.ensureActive()
             result
-        } } finally { active.remove(job) }
+        } } finally { release(job) }
     }
 }

@@ -1,5 +1,6 @@
 package io.github.grassified.wristprompt
 
+import io.github.grassified.wristprompt.auth.ActiveRouteRepository
 import io.github.grassified.wristprompt.auth.WatchProfiles
 import io.github.grassified.wristprompt.auth.ApiKeyRepository
 import io.github.grassified.wristprompt.auth.ApiKeySetupBridge
@@ -19,6 +20,8 @@ import io.github.grassified.wristprompt.bridge.BridgeProtocol
 import io.github.grassified.wristprompt.bridge.WatchAuthBridge
 import io.github.grassified.wristprompt.bridge.WearConnectivity
 import io.github.grassified.wristprompt.storage.HostIdRepository
+
+private val Context.routeStore by preferencesDataStore(name = "active_route")
 
 private val Context.installationStore by preferencesDataStore(name = "installation")
 
@@ -50,7 +53,8 @@ class WristPromptApplication : Application() {
     }
     val conversations by lazy { io.github.grassified.wristprompt.storage.SqliteConversationStore(this) }
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
-    val credentials by lazy { CredentialRouter(profiles, apiKeys, refresh::refresh, appScope) }
+    internal val routes by lazy { ActiveRouteRepository(routeStore) { apiKeys.snapshot().mode } }
+    val credentials by lazy { CredentialRouter(profiles, apiKeys, refresh::refresh, appScope, routes) }
     val apiKeyBridge by lazy { ApiKeySetupBridge(hostIds::getOrCreate, connectivity::reachablePeers, connectivity::request, apiKeys::prepare) }
     private val openAiHttp by lazy { OpenAiHttp() }
     val revocation by lazy { OpenAiRevocation(openAiHttp) }

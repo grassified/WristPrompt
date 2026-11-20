@@ -2,11 +2,16 @@ package io.github.grassified.wristprompt.openai
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.grassified.wristprompt.auth.ActiveRouteRepository
 import io.github.grassified.wristprompt.auth.CredentialMode
+import io.github.grassified.wristprompt.auth.InferenceRoute
+import io.github.grassified.wristprompt.auth.RouteSelection
 import io.github.grassified.wristprompt.storage.SecureStorageException
 import io.github.grassified.wristprompt.storage.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
+
+internal enum class RouteSwitchRequest { STARTED, BUSY, CONFIRM_DISCARD, UNAVAILABLE, ALREADY_SELECTED }
 
 enum class ProofStage { IDLE, LOADING, READY, STREAMING, SUCCEEDED, OUTPUT_MISMATCH, FAILED, CANCELLED }
 data class ProofState(
@@ -20,6 +25,7 @@ data class ProofState(
     val configuration: InferenceConfiguration = InferenceConfiguration(),
     val thinkingNotice: String? = null,
     val thinkingSaving: Boolean = false,
+    val modeRevision: Long = 0,
 ) {
     val busy: Boolean get() = stage == ProofStage.LOADING || stage == ProofStage.STREAMING
     override fun toString() = io.github.grassified.wristprompt.bridge.SafeDiagnostics.REDACTED
@@ -35,7 +41,13 @@ class InferenceViewModel(
     private val localConversationIdentity: (suspend (InferenceAccessState) -> String)? = null,
     private val conversationImages: ConversationImages? = null,
     private val generatedImages: GeneratedImages? = null,
+    private val routes: ActiveRouteRepository? = null,
 ) : ViewModel() {
+    val routeSelection = routes?.state
+    private val mutableRouteSwitching = MutableStateFlow(false)
+    val routeSwitching = mutableRouteSwitching.asStateFlow()
+    private val mutableSwitchBusy = MutableStateFlow(false)
+    val switchBusy = mutableSwitchBusy.asStateFlow()
     private val mutableState = MutableStateFlow(ProofState())
     val state = mutableState.asStateFlow()
     private val conversation = ChatConversation()
@@ -60,6 +72,7 @@ class InferenceViewModel(
     val history = mutableHistory.asStateFlow()
     private var restoreOnStartup = true
     init {
+        routes?.let { viewModelScope.launch { it.load() } }
         viewModelScope.launch {
             accounts.distinctUntilChanged { old, next -> old == next }.collect { account ->
                 observedAccess = account
@@ -69,13 +82,49 @@ class InferenceViewModel(
                 catalogScope = null
                 mutableHistory.value = ConversationHistory()
                 clearChat()
-                mutableState.value = ProofState(problem = account.problem, mode = account.mode)
+                mutableState.value = ProofState(problem = account.problem, mode = account.mode, modeRevision = account.modeRevision)
                 if (account.usable) loadModels()
             }
         }
     }
+    internal fun switchRoute(route: InferenceRoute, inputPending: Boolean, discardConfirmed: Boolean = false): RouteSwitchRequest {
+        val repository = routes ?: return RouteSwitchRequest.UNAVAILABLE
+        val previous = repository.state.value.selection ?: return RouteSwitchRequest.UNAVAILABLE
+        if (route == previous.route) return RouteSwitchRequest.ALREADY_SELECTED
+        if (routeSwitching.value || operation?.isActive == true || completionOwner != null ||
+            state.value.busy || chat.value.busy
+        ) return RouteSwitchRequest.BUSY
+        if (!discardConfirmed && (chat.value.draft.isNotEmpty() || imageSelection.selected.value.isNotEmpty() || inputPending)) {
+            return RouteSwitchRequest.CONFIRM_DISCARD
+        }
+        mutableRouteSwitching.value = true
+        mutableSwitchBusy.value = false
+        viewModelScope.launch {
+            try {
+                val changed = session.changeRouteWhenIdle {
+                    writer?.awaitIdle()
+                    restoreOnStartup = false
+                    repository.select(route)
+                    // A late platform input or existing draft never belongs to the new route.
+                    inputRevision++
+                }
+                if (!changed) mutableSwitchBusy.value = true
+            } catch (cancelled: CancellationException) {
+                throw cancelled
+            } catch (_: SecureStorageException) {
+                // Repository state blocks credential acquisition and exposes the storage failure.
+            } finally {
+                mutableRouteSwitching.value = false
+            }
+            if (repository.state.value.selection?.route == route && observedAccess == accounts.value &&
+                observedAccess.route == route && observedAccess.usable && prepared == null
+            ) loadModels()
+        }
+        return RouteSwitchRequest.STARTED
+    }
+
     fun select(slug: String) {
-        if (operation?.isActive == true || state.value.busy || state.value.models.none { it.slug == slug }) return
+        if (routeSwitching.value || operation?.isActive == true || state.value.busy || state.value.models.none { it.slug == slug }) return
         val catalog = prepared?.takeIf(::compatible) ?: return
         val run = epoch
         launchOperation {
@@ -111,6 +160,7 @@ class InferenceViewModel(
     }
     /** Only an explicit Send calls session.chat; control changes are atomic local checkpoints. */
     fun selectThinking(value: String?) {
+        if (routeSwitching.value) return
         if (cleared || operation?.isActive == true || state.value.busy || chat.value.busy || chat.value.readOnlyReason != null) return
         val catalog = prepared?.takeIf(::compatible) ?: return
         val selected = state.value.selectedSlug ?: return
@@ -154,14 +204,14 @@ class InferenceViewModel(
         null
     } catch (_: ApiFailure) { "Saved thinking level is unsupported. Choose Default or a supported value before Send." }
     fun loadModels() {
-        if (operation?.isActive == true || !accounts.value.usable) return
+        if (routeSwitching.value || operation?.isActive == true || !accounts.value.usable || !routeMatches(accounts.value)) return
         val priorModel = contextModel ?: state.value.selectedSlug
         val priorConfiguration = conversation.configuration
         val run = ++epoch
         prepared = null
         catalogScope = null
         writer?.entry?.let { conversation.readOnly(readOnlyReason(it, false)); publishChat() }
-        mutableState.value = ProofState(stage = ProofStage.LOADING, mode = state.value.mode, configuration = conversation.configuration)
+        mutableState.value = ProofState(stage = ProofStage.LOADING, mode = state.value.mode, configuration = conversation.configuration, modeRevision = state.value.modeRevision)
         launchOperation {
             try {
                 if (conversationStore != null && localConversationIdentity != null) {
@@ -194,7 +244,7 @@ class InferenceViewModel(
                     publishChat()
                 }
                 mutableState.value = ProofState(ProofStage.READY, catalog.models,
-                    restored, mode = catalog.credential.mode, configuration = conversation.configuration,
+                    restored, mode = catalog.credential.mode, modeRevision = catalog.credential.modeRevision, configuration = conversation.configuration,
                     thinkingNotice = if (priorModel != null && priorModel != restored && priorConfiguration.controls.isNotEmpty())
                         "Thinking level reset to Default for this model." else thinkingValidationNotice(catalog, restored))
             } catch (cancelled: CancellationException) { cancelled(run); throw cancelled
@@ -202,7 +252,7 @@ class InferenceViewModel(
         }
     }
     fun test() {
-        if (operation?.isActive == true) return
+        if (routeSwitching.value || operation?.isActive == true) return
         val catalog = prepared?.takeIf(::compatible) ?: return
         val selected = state.value.selectedSlug?.takeIf { slug -> catalog.models.any { it.slug == slug } } ?: return
         val run = ++epoch
@@ -238,7 +288,9 @@ class InferenceViewModel(
         if (state.value.busy) mutableState.value = state.value.copy(stage = ProofStage.CANCELLED)
     }
     // Input results are accepted only for the context that launched the platform composer.
-    fun inputToken(): Long? = inputRevision.takeIf { !cleared && accounts.value == observedAccess && !state.value.busy && !chat.value.busy && chat.value.readOnlyReason == null }
+    fun inputToken(): Long? = inputRevision.takeIf { !cleared && !routeSwitching.value &&
+        routeMatches(accounts.value) &&
+        accounts.value == observedAccess && !state.value.busy && !chat.value.busy && chat.value.readOnlyReason == null }
     fun draft(text: String, token: Long = inputRevision) {
         if (inputToken() != token) return
         if (contextModel == null) contextModel = state.value.selectedSlug
@@ -273,6 +325,7 @@ class InferenceViewModel(
         publishChat()
     }
     fun newChat() {
+        if (routeSwitching.value) return
         restoreOnStartup = false
         mutableHistory.value = history.value.copy(loading = false, error = null)
         cancelOperation()
@@ -298,7 +351,7 @@ class InferenceViewModel(
         val store = conversationStore ?: return
         writer?.awaitIdle()
         val entries = store.list(scope).filter { scope.canView(it.key) }
-        if (run != epoch || accounts.value != observedAccess) return
+        if (run != epoch || accounts.value != observedAccess || !routeMatches(accounts.value)) return
         historyScope = scope
         mutableHistory.value = ConversationHistory(entries)
         if (restoreOnStartup) {
@@ -318,7 +371,8 @@ class InferenceViewModel(
         }
     }
     fun refreshHistory() {
-        if (chat.value.busy || operation?.isActive == true) {
+        if (!routeMatches(accounts.value) || accounts.value != observedAccess) return
+        if (routeSwitching.value || chat.value.busy || operation?.isActive == true) {
             mutableHistory.value = history.value.copy(error = "Finish or stop the current operation first."); return
         }
         val scope = historyScope ?: return
@@ -334,7 +388,8 @@ class InferenceViewModel(
             ?: history.value.entries.firstOrNull { it.id == id }?.key)?.takeIf(scope::canView)
 
     fun openChat(id: String, onOpened: () -> Unit = {}) {
-        if (chat.value.busy || operation?.isActive == true || cleared) return
+        if (!routeMatches(accounts.value) || accounts.value != observedAccess) return
+        if (routeSwitching.value || chat.value.busy || operation?.isActive == true || cleared) return
         val store = conversationStore ?: return
         val scope = historyScope ?: return
         val key = visibleKey(id, scope) ?: return
@@ -361,7 +416,8 @@ class InferenceViewModel(
     fun renameChat(id: String, title: String) = editHistory(id, title)
     fun deleteChat(id: String) = editHistory(id, null)
     private fun editHistory(id: String, title: String?) {
-        if (chat.value.busy || operation?.isActive == true || cleared) return
+        if (!routeMatches(accounts.value) || accounts.value != observedAccess) return
+        if (routeSwitching.value || chat.value.busy || operation?.isActive == true || cleared) return
         val store = conversationStore ?: return
         val scope = historyScope ?: return
         val key = visibleKey(id, scope) ?: return
@@ -390,7 +446,7 @@ class InferenceViewModel(
     fun send(onStarted: () -> Unit = {}) = send(false, onStarted)
     fun generateImage(onStarted: () -> Unit = {}) = send(true, onStarted)
     private fun ownsAttachment(key: ConversationKey, scope: Long) =
-        !cleared && scope == sentImageScope.value && accounts.value == observedAccess &&
+        !cleared && !routeSwitching.value && routeMatches(accounts.value) && scope == sentImageScope.value && accounts.value == observedAccess &&
             writer?.entry?.key == key && historyScope?.canView(key) == true && key.supportsReplay
 
     suspend fun generatedContent(reference: GeneratedAttachment): io.github.grassified.wristprompt.images.ImageContent {
@@ -426,7 +482,7 @@ class InferenceViewModel(
         return bytes
     }
     private fun send(imageGeneration: Boolean, onStarted: () -> Unit) {
-        if (operation?.isActive == true || state.value.busy) return
+        if (routeSwitching.value || operation?.isActive == true || state.value.busy) return
         val catalog = prepared?.takeIf(::compatible) ?: return
         val selected = state.value.selectedSlug ?: return
         val model = catalog.models.firstOrNull { it.slug == selected } ?: return
@@ -561,10 +617,14 @@ class InferenceViewModel(
     }
     // The StateFlow may change before its collector runs. Never dispatch against that old snapshot.
     private fun compatible(catalog: PreparedCatalog): Boolean = accounts.value.let { access ->
-        access.usable && access.client == catalog.credential.clientId &&
+        access.usable && routeMatches(access) && access.client == catalog.credential.clientId &&
             access.generation == catalog.credential.generation && access.mode == catalog.credential.mode &&
             access.modeRevision == catalog.credential.modeRevision
     }
+    private fun routeMatches(access: InferenceAccessState): Boolean =
+        routes == null || (access.route == InferenceRoute.openAi(access.mode) &&
+            routes.state.value.selection == RouteSelection(InferenceRoute.openAi(access.mode), access.modeRevision))
+
     private fun cancelled(run: Long) {
         if (run == epoch && state.value.busy) mutableState.value = state.value.copy(stage = ProofStage.CANCELLED)
     }
@@ -575,7 +635,7 @@ class InferenceViewModel(
             else writer?.entry?.let { conversation.readOnly(readOnlyReason(it, false)); publishChat() }
             prepared = null
             catalogScope = null
-            mutableState.value = ProofState(stage = ProofStage.FAILED, problem = problem, mode = state.value.mode)
+            mutableState.value = ProofState(stage = ProofStage.FAILED, problem = problem, mode = state.value.mode, modeRevision = state.value.modeRevision)
         }
     }
     private fun publishChat() { mutableChat.value = conversation.state }

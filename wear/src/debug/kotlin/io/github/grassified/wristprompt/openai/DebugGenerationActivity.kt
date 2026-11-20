@@ -133,7 +133,7 @@ class DebugGenerationActivity : ComponentActivity() {
             WristPromptTheme {
                 WearShellContent(WatchAccountState(connected = true), WatchAuthState.IDLE,
                     ApiKeyState(loaded = true, mode = CredentialMode.OPENAI_API_KEY, configured = true), KeySetupStatus.IDLE, false,
-                    fixture.vm, ConnectionActions({}, {}, {}, {}, {}, {}, {}), Surface.COMPOSER)
+                    fixture.vm, ConnectionActions({}, {}, {}, {}, {}, {}), Surface.COMPOSER)
             }
         }
     }
