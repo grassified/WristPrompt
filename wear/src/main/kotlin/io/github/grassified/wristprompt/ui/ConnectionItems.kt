@@ -1,11 +1,17 @@
 package io.github.grassified.wristprompt.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.ui.Modifier
+import androidx.wear.compose.material3.RadioButton
+import androidx.wear.compose.material3.Text
 import io.github.grassified.wristprompt.auth.*
 import io.github.grassified.wristprompt.openai.InferenceViewModel
 
 internal fun ShellListScope.connectionItems(
     ui: ShellPresentation, accounts: WatchAccountState, key: ApiKeyState,
-    setup: KeySetupStatus, changing: Boolean, actions: ConnectionActions, proof: InferenceViewModel, onDiagnostics: () -> Unit, onUsage: () -> Unit,
+    setup: KeySetupStatus, changing: Boolean, actions: ConnectionActions, proof: InferenceViewModel,
+    routeState: RouteSelectionState, switchMessage: String?, onRoute: (InferenceRoute) -> Unit,
+    onDiagnostics: () -> Unit, onUsage: () -> Unit,
 ) {
     item { ShellText("Account & Connection", heading = true) }
     item { ShellText(billingDisclosure(ui.billing)) }
@@ -13,13 +19,23 @@ internal fun ShellListScope.connectionItems(
         item { ShellText(ui.recovery.explanation.orEmpty()) }
         action("Diagnostics") { onDiagnostics() }
     }
-    item { ShellText("Billing route", heading = true) }
-    for (mode in CredentialMode.entries) action(
-        (if (key.loaded && !key.storageError && key.mode == mode) "✓ " else "") +
-            if (mode == CredentialMode.CHATGPT_PLAN) "ChatGPT plan" else "OpenAI API · API billing",
-        enabled = key.loaded && !key.storageError && !changing,
-        onClick = { proof.stop(); actions.mode(mode) },
-    )
+    item { ShellText("Provider and billing", heading = true) }
+    if (switchMessage != null) item { ShellText(switchMessage) }
+    val current = routeState.selection?.route
+    for (route in InferenceRoute.entries) item {
+        RadioButton(
+            selected = route == current,
+            onSelect = { if (route != current) onRoute(route) },
+            enabled = routeState.availableSelection != null && !changing,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text(route.label()) },
+            secondaryLabel = { Text(when (route) {
+                InferenceRoute.CHATGPT_PLAN -> "OpenAI"
+                InferenceRoute.OPENAI_API_KEY -> "Separate API billing"
+                InferenceRoute.OPENROUTER_API_KEY -> "Chat unavailable"
+            }) },
+        )
+    }
     item { ShellText("ChatGPT account", heading = true) }
     item { ShellText(when {
         accounts.storageError -> "Secure storage unavailable"
@@ -41,16 +57,20 @@ internal fun ShellListScope.connectionItems(
     if (accounts.accounts.isNotEmpty()) action("Add ChatGPT account", !accounts.signingOut) { actions.select(null) }
     if (ui.showManageUsage) action("Manage usage", onClick = onUsage)
     if (ui.showSignOut) action("Sign out of ChatGPT", !accounts.signingOut && !accounts.storageError) {
-        if (key.mode == CredentialMode.CHATGPT_PLAN) proof.stop()
+        if (current == InferenceRoute.CHATGPT_PLAN) proof.stop()
         actions.signOut()
     }
     item { ShellText("OpenAI API key", heading = true) }
-    item { ShellText(if (key.configured) "Configured · separate API billing" else "Not configured · separate API billing") }
+    item { ShellText(when {
+        key.configured && !key.usableKey -> "Replace with an OpenAI key"
+        key.configured -> "Configured · separate API billing"
+        else -> "Not configured · separate API billing"
+    }) }
     action(if (key.configured) "Change API key" else "Set up API key",
         enabled = setup != KeySetupStatus.REQUESTING && !changing, onClick = actions.request)
     if (setup != KeySetupStatus.IDLE) item { ShellText(keySetupText(setup)) }
     if (ui.showRemoveKey) action("Remove API key", !changing) {
-        if (key.mode == CredentialMode.OPENAI_API_KEY) proof.stop()
+        if (current == InferenceRoute.OPENAI_API_KEY) proof.stop()
         actions.remove()
     }
 }
@@ -88,4 +108,10 @@ internal fun ShellListScope.openRouterKeyItems(
     }
     if (message != null) item { ShellText(message) }
     if (state.configured) action("Remove OpenRouter key", !busy, remove)
+}
+
+internal fun InferenceRoute.label(): String = when (this) {
+    InferenceRoute.CHATGPT_PLAN -> "ChatGPT plan"
+    InferenceRoute.OPENAI_API_KEY -> "OpenAI API key"
+    InferenceRoute.OPENROUTER_API_KEY -> "OpenRouter API key"
 }

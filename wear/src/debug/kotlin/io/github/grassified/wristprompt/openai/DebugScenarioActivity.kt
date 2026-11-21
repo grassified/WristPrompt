@@ -174,7 +174,7 @@ class DebugScenarioActivity : ComponentActivity() {
                         style = MaterialTheme.typography.labelSmall, textAlign = TextAlign.Center)
                     Box(Modifier.weight(1f)) {
                         WearShellContent(f.accounts, f.authState, f.key, KeySetupStatus.IDLE, false, f.vm,
-                            ConnectionActions({}, {}, {}, {}, {}, {}, {}), f.surface,
+                            ConnectionActions({}, {}, {}, {}, {}, {}), f.surface,
                             null, metrics, presets = debugPrompts)
                     }
                 }

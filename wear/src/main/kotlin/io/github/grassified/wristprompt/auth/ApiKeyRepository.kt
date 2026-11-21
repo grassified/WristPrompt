@@ -23,7 +23,9 @@ import kotlinx.serialization.Serializable
 ) { override fun toString() = SafeDiagnostics.REDACTED }
 
 data class ApiKeyState(val loaded: Boolean = false, val mode: CredentialMode = CredentialMode.CHATGPT_PLAN,
-    val modeRevision: Long = 0, val keyRevision: Long = 0, val configured: Boolean = false, val storageError: Boolean = false)
+    val modeRevision: Long = 0, val keyRevision: Long = 0, val configured: Boolean = false, val storageError: Boolean = false, val wrongProviderKey: Boolean = false) {
+    val usableKey get() = configured && !wrongProviderKey
+}
 
 class ApiKeyRepository(private val record: SecretRecord, private val now: SessionClock = SessionClock.SYSTEM) {
     private val mutex = Mutex()
@@ -41,7 +43,7 @@ class ApiKeyRepository(private val record: SecretRecord, private val now: Sessio
             }
         } finally { bytes.fill(0) }
     } catch (_: Exception) { mutableState.value = mutableState.value.copy(storageError = true); throw SecureStorageException() }
-    private fun publish(v: ApiVault) { mutableState.value = ApiKeyState(true, v.mode, v.modeRevision, v.keyRevision, v.key != null && !deleting) }
+    private fun publish(v: ApiVault) { mutableState.value = ApiKeyState(true, v.mode, v.modeRevision, v.keyRevision, v.key != null && !deleting, wrongProviderKey = v.key?.let(OpenRouterKeyProtocol::hasOpenRouterPrefix) == true) }
     private fun save(v: ApiVault) {
         val bytes = ProfileProtocol.json.encodeToString(ApiVault.serializer(), v).encodeToByteArray()
         try { record.write(bytes); publish(v) }
@@ -82,32 +84,35 @@ class ApiKeyRepository(private val record: SecretRecord, private val now: Sessio
         val v = read(); save(v.copy(key = null, keyRevision = Math.addExact(v.keyRevision, 1), model = null, conversationScope = null, pending = null, accepted = null))
         deleting = false
     } }
-    suspend fun credential(): CredentialLease = withContext(Dispatchers.IO) { mutex.withLock {
+    suspend fun credential(routeRevision: Long? = null): CredentialLease = withContext(Dispatchers.IO) { mutex.withLock {
         if (state.value.storageError) throw SecureStorageException()
         val v = read()
-        if (v.mode != CredentialMode.OPENAI_API_KEY) throw ApiFailure(ApiProblem.STALE_ACCOUNT)
+        if (routeRevision == null && v.mode != CredentialMode.OPENAI_API_KEY) throw ApiFailure(ApiProblem.STALE_ACCOUNT)
         if (deleting || v.key == null || !ApiKeyProtocol.forOpenAi(v.key)) throw ApiFailure(ApiProblem.API_KEY_MISSING)
-        CredentialLease(API_CLIENT, v.keyRevision, v.key, Long.MAX_VALUE, CredentialMode.OPENAI_API_KEY, v.modeRevision)
+        CredentialLease(API_CLIENT, v.keyRevision, v.key, Long.MAX_VALUE, CredentialMode.OPENAI_API_KEY, routeRevision ?: v.modeRevision)
     } }
     suspend fun modeCurrent(mode: CredentialMode, revision: Long): Boolean = withContext(Dispatchers.IO) { mutex.withLock {
         if (state.value.storageError) return@withLock false
         val v = read(); v.mode == mode && v.modeRevision == revision
     } }
-    suspend fun current(lease: CredentialLease): Boolean = withContext(Dispatchers.IO) { mutex.withLock {
-        val v = read(); !deleting && !state.value.storageError && v.mode == lease.mode && v.modeRevision == lease.modeRevision &&
-            v.keyRevision == lease.generation && v.key == lease.accessToken && ApiKeyProtocol.forOpenAi(lease.accessToken)
+    suspend fun current(lease: CredentialLease, activeRoute: Boolean = false): Boolean = withContext(Dispatchers.IO) { mutex.withLock {
+        matches(read(), lease, activeRoute)
     } }
+    private fun matches(v: ApiVault, lease: CredentialLease, activeRoute: Boolean) =
+        !deleting && !state.value.storageError && lease.mode == CredentialMode.OPENAI_API_KEY &&
+            (activeRoute || (v.mode == lease.mode && v.modeRevision == lease.modeRevision)) &&
+            v.keyRevision == lease.generation && v.key == lease.accessToken && ApiKeyProtocol.forOpenAi(lease.accessToken)
     suspend fun selectedModel(): String? = withContext(Dispatchers.IO) { mutex.withLock { read().model } }
-    suspend fun conversationIdentity(lease: CredentialLease): String = withContext(Dispatchers.IO) { mutex.withLock {
+    suspend fun conversationIdentity(lease: CredentialLease, activeRoute: Boolean = false): String = withContext(Dispatchers.IO) { mutex.withLock {
         val v = read()
-        require(!deleting && v.key != null && v.key == lease.accessToken && v.keyRevision == lease.generation &&
-            v.mode == lease.mode && v.modeRevision == lease.modeRevision)
+        require(matches(v, lease, activeRoute))
         val identity = v.conversationScope ?: java.util.UUID.randomUUID().toString().also { save(v.copy(conversationScope = it)) }
         MessageDigest.getInstance("SHA-256").digest(identity.encodeToByteArray()).joinToString("") { "%02x".format(it) }
     } }
-    suspend fun selectModel(lease: CredentialLease, slug: String) = withContext(Dispatchers.IO) { mutex.withLock {
+    suspend fun selectModel(lease: CredentialLease, slug: String, activeRoute: Boolean = false) = withContext(Dispatchers.IO) { mutex.withLock {
+        if (state.value.storageError) throw SecureStorageException()
         val v = read(); require(validModel(slug))
-        require(v.mode == CredentialMode.OPENAI_API_KEY && v.modeRevision == lease.modeRevision && v.keyRevision == lease.generation)
+        require(matches(v, lease, activeRoute))
         save(v.copy(model = slug))
     } }
     private fun validModel(s: String) = s.isNotBlank() && s.length <= 256 && s.none(Char::isISOControl)

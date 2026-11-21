@@ -19,7 +19,7 @@ class DebugTranscriptActivity : ComponentActivity() {
             WristPromptTheme {
                 WearShellContent(WatchAccountState(connected = true, planEnabled = true), WatchAuthState.IDLE,
                     ApiKeyState(loaded = true), KeySetupStatus.IDLE, false, vm,
-                    ConnectionActions({}, {}, {}, {}, {}, {}, {}), Surface.CHAT)
+                    ConnectionActions({}, {}, {}, {}, {}, {}), Surface.CHAT)
             }
         }
     }

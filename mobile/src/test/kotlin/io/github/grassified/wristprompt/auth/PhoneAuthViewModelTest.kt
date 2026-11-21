@@ -26,7 +26,7 @@ class PhoneAuthViewModelTest {
     private var vm: PhoneAuthViewModel? = null
     @Before fun setup() { Dispatchers.setMain(Dispatchers.Unconfined) }
     @After fun cleanup(): Unit = runBlocking {
-        vm?.viewModelScope?.cancel()
+        vm?.viewModelScope?.coroutineContext?.job?.cancelAndJoin()
         storeScope.coroutineContext.job.cancelAndJoin()
         Dispatchers.resetMain()
     }
@@ -145,7 +145,7 @@ class PhoneAuthViewModelTest {
             release.complete(Unit); withTimeout(5000) { returned.await() }; yield()
             assertEquals(PhoneStage.READY, model.state.value.stage)
             assertEquals(if (lateAck) 1 else 0, transfers)
-            model.viewModelScope.cancel()
+            model.viewModelScope.coroutineContext.job.cancelAndJoin()
         }
     }
     @Test fun disconnectedSetupHasBoundedFailureAndNoTransfer(): Unit = runBlocking {

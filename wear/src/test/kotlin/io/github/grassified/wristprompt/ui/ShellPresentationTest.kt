@@ -147,6 +147,20 @@ class ShellPresentationTest {
         assertFalse(ui.canTest)
     }
 
+    @Test fun selectedRouteAndRevisionSuppressPreviousProviderOutputAndSend() {
+        val old = proof.copy(mode = CredentialMode.OPENAI_API_KEY, output = "synthetic old result", modeRevision = 1)
+        val openRouter = shellPresentation(account, key, old, WatchAuthState.IDLE, false,
+            RouteSelectionState(RouteSelection(InferenceRoute.OPENROUTER_API_KEY, 2)))
+        assertEquals("OpenRouter API key", openRouter.billing)
+        assertEquals("OpenRouter chat unavailable", openRouter.status)
+        assertFalse(openRouter.proofAvailable)
+        assertFalse(openRouter.showOutput)
+        val returned = shellPresentation(account, key, old, WatchAuthState.IDLE, false,
+            RouteSelectionState(RouteSelection(InferenceRoute.OPENAI_API_KEY, 3)))
+        assertFalse(returned.proofAvailable)
+        assertFalse(returned.showOutput)
+    }
+
     @Test fun outputRowsPreserveTextAndUnicodeExactly() {
         val text = "Line one\n\n" + "word ".repeat(60) + "x".repeat(79) + "😀" + "tail".repeat(80)
         val chunks = readableChunks(text)
