@@ -3,6 +3,7 @@ package io.github.grassified.wristprompt.openai
 import io.github.grassified.wristprompt.auth.*
 import io.github.grassified.wristprompt.bridge.*
 import io.github.grassified.wristprompt.storage.SecretRecord
+import io.github.grassified.wristprompt.storage.SecureStorageException
 import kotlinx.coroutines.*
 import kotlinx.coroutines.test.*
 import org.junit.Assert.*
@@ -70,6 +71,38 @@ class CredentialRouterTest {
         routes.select(InferenceRoute.OPENROUTER_API_KEY)
         routes.select(InferenceRoute.CHATGPT_PLAN)
         assertEquals("synthetic-access", router.current().accessToken)
+        assertArrayEquals(oauthBefore, oauth.bytes)
+        assertArrayEquals(apiBefore, api.bytes)
+    }
+
+    @Test fun lastConfirmedRouteIsDisplayOnlyAfterUncertainWrite() = runTest {
+        val oauth = Record()
+        val api = Record()
+        val profiles = WatchProfiles(oauth) { time }
+        val keys = ApiKeyRepository(api) { time }
+        addPlan(profiles)
+        addKey(keys)
+        val preferences = RoutePreferenceFixture()
+        val routes = ActiveRouteRepository(preferences) { CredentialMode.CHATGPT_PLAN }
+        routes.load()
+        val router = CredentialRouter(profiles, keys, { error("Unexpected refresh") }, backgroundScope, routes)
+        runCurrent()
+        val access = router.state.value
+        assertTrue(access.usable)
+        val lease = router.current()
+        val oauthBefore = oauth.bytes!!.clone()
+        val apiBefore = api.bytes!!.clone()
+
+        preferences.interruptAfterCommit = true
+        assertTrue(runCatching { routes.select(InferenceRoute.OPENAI_API_KEY) }.exceptionOrNull() is SecureStorageException)
+        // Check immediately, before the projected access flow is updated.
+        assertFalse(router.isCurrent(lease))
+        assertTrue(runCatching { router.current() }.exceptionOrNull() is SecureStorageException)
+        assertTrue(runCatching { router.selectedModel(lease) }.exceptionOrNull() is ApiFailure)
+        assertTrue(runCatching { router.conversationIdentity(lease) }.exceptionOrNull() is ApiFailure)
+        assertTrue(runCatching { router.localConversationIdentity(access) }.isFailure)
+        runCurrent()
+        assertEquals(access.copy(usable = false, problem = ApiProblem.STORAGE), router.state.value)
         assertArrayEquals(oauthBefore, oauth.bytes)
         assertArrayEquals(apiBefore, api.bytes)
     }

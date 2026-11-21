@@ -3,6 +3,7 @@ package io.github.grassified.wristprompt.openai
 import androidx.lifecycle.viewModelScope
 import io.github.grassified.wristprompt.auth.*
 import io.github.grassified.wristprompt.storage.*
+import io.github.grassified.wristprompt.ui.ComposerInteraction
 import java.util.UUID
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,6 +16,173 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RouteSwitchTest {
+    @Test fun platformResultDeliveredBeforeBusyGateSurvivesTheRejectedSwitch() = withRouteModel {
+        val input = ComposerInteraction(vm)
+        assertTrue(input.begin())
+        provider.reply = { awaitCancellation() }
+        val catalog = session.catalog()
+        var completed = false
+        assertEquals(RouteSwitchRequest.STARTED, vm.switchRoute(InferenceRoute.OPENROUTER_API_KEY, true, true) { completed = true })
+        val active = scope.launch(start = CoroutineStart.UNDISPATCHED) { session.test(catalog, "synthetic", {}, {}) }
+        try {
+            input.result("Keyboard text")
+            scope.runCurrent()
+            assertTrue(vm.switchBusy.value)
+            assertFalse(completed)
+            assertEquals(RouteSelection(InferenceRoute.CHATGPT_PLAN, 0), routes.current())
+            assertEquals("Keyboard text", vm.chat.value.draft)
+        } finally {
+            active.cancelAndJoin()
+        }
+    }
+
+    @Test fun keepDraftLeavesTheKeyboardAndUnsentReviewOnTheOriginalRoute() = withRouteModel {
+        val input = ComposerInteraction(vm)
+        assertTrue(input.begin())
+        vm.draft("Existing draft")
+        val photo = UUID.randomUUID().toString()
+        assertTrue(vm.imageSelection.replace(emptyList(), listOf(photo), setOf(photo)))
+        assertEquals(RouteSwitchRequest.CONFIRM_DISCARD, vm.switchRoute(InferenceRoute.OPENROUTER_API_KEY, input.pending))
+        // Keep draft dismisses the dialog without sending a confirmed request.
+        scope.runCurrent()
+        assertEquals("Existing draft", vm.chat.value.draft)
+        assertTrue(input.pending)
+        input.result("Keyboard text")
+        assertEquals("Keyboard text", vm.chat.value.draft)
+        assertEquals(listOf(photo), vm.imageSelection.selected.value)
+        assertEquals(RouteSelection(InferenceRoute.CHATGPT_PLAN, 0), routes.current())
+        assertEquals(1, preferences.commits)
+        assertEquals(0, provider.sends)
+    }
+
+    @Test fun confirmedSuccessClearsReviewAndLateKeyboardRemainsStaleAfterReturning() = withRouteModel {
+        val input = ComposerInteraction(vm)
+        assertTrue(input.begin())
+        vm.draft("Existing draft")
+        val photo = UUID.randomUUID().toString()
+        assertTrue(vm.imageSelection.replace(emptyList(), listOf(photo), setOf(photo)))
+        val write = CompletableDeferred<Unit>()
+        preferences.beforeCommit = { write.await() }
+        var completions = 0
+        val first = vm.switchRoute(InferenceRoute.OPENROUTER_API_KEY, true, true) { completions++ }
+        assertEquals(RouteSwitchRequest.STARTED, first)
+        scope.runCurrent()
+        assertEquals("Existing draft", vm.chat.value.draft)
+        assertEquals(listOf(photo), vm.imageSelection.selected.value)
+        assertEquals(0, completions)
+        assertEquals(RouteSwitchRequest.BUSY, vm.switchRoute(InferenceRoute.OPENROUTER_API_KEY, true, true))
+        assertEquals(RouteSwitchRequest.BUSY, vm.switchRoute(InferenceRoute.CHATGPT_PLAN, true, true))
+        write.complete(Unit)
+        scope.runCurrent()
+        assertEquals(1, completions)
+        assertEquals(RouteSelection(InferenceRoute.OPENROUTER_API_KEY, 1), routes.current())
+        assertEquals("", vm.chat.value.draft)
+        assertTrue(vm.imageSelection.selected.value.isEmpty())
+        assertEquals(1, provider.catalogs)
+        assertEquals(RouteSwitchRequest.ALREADY_SELECTED, vm.switchRoute(InferenceRoute.OPENROUTER_API_KEY, false))
+        assertEquals(RouteSwitchRequest.STARTED, vm.switchRoute(InferenceRoute.CHATGPT_PLAN, false) { completions++ })
+        scope.runCurrent()
+        assertFalse(input.begin()) // The previous native launch still owns its callback.
+        input.result("Late keyboard")
+        assertEquals("", vm.chat.value.draft)
+        assertTrue(input.begin())
+        input.result("New keyboard")
+        assertEquals("New keyboard", vm.chat.value.draft)
+        assertEquals(2, completions)
+        assertEquals(3, preferences.commits) // Migration and exactly two switches.
+        assertEquals(RouteSelection(InferenceRoute.CHATGPT_PLAN, 2), routes.current())
+        assertEquals(2, provider.catalogs)
+        assertEquals(0, provider.sends)
+    }
+
+    @Test fun failedWritePreservesReviewAndKeyboardWithoutAcknowledgingSwitch() = withRouteModel {
+        val input = ComposerInteraction(vm)
+        assertTrue(input.begin())
+        vm.draft("Existing draft")
+        val photo = UUID.randomUUID().toString()
+        assertTrue(vm.imageSelection.replace(emptyList(), listOf(photo), setOf(photo)))
+        val write = CompletableDeferred<Unit>()
+        preferences.beforeCommit = { write.await() }
+        preferences.interruptBeforeCommit = true
+        assertEquals(RouteSwitchRequest.STARTED, vm.switchRoute(InferenceRoute.OPENROUTER_API_KEY, true, true) {
+            fail("Failed write must never acknowledge the switch")
+        })
+        scope.runCurrent()
+        input.result("Keyboard text")
+        assertEquals("Existing draft", vm.chat.value.draft)
+        write.complete(Unit)
+        scope.runCurrent()
+        assertEquals("Keyboard text", vm.chat.value.draft)
+        assertEquals(listOf(photo), vm.imageSelection.selected.value)
+        assertEquals(RouteSelectionState(RouteSelection(InferenceRoute.CHATGPT_PLAN, 0), storageError = true), routes.state.value)
+        assertEquals(RouteSwitchRequest.UNAVAILABLE, vm.switchRoute(InferenceRoute.OPENROUTER_API_KEY, false))
+        vm.send()
+        scope.runCurrent()
+        assertEquals(1, provider.catalogs)
+        assertEquals(0, provider.sends)
+        assertEquals(1, preferences.commits)
+    }
+
+    @Test fun resultAfterLostCommitAcknowledgmentStillBelongsToTheOriginalReview() = withRouteModel {
+        val input = ComposerInteraction(vm)
+        assertTrue(input.begin())
+        preferences.interruptAfterCommit = true
+        assertEquals(RouteSwitchRequest.STARTED, vm.switchRoute(InferenceRoute.OPENROUTER_API_KEY, true, true) {
+            fail("Uncertain write must never acknowledge the switch")
+        })
+        scope.runCurrent()
+        assertTrue(input.pending)
+        input.result("Keyboard text")
+        assertEquals("Keyboard text", vm.chat.value.draft)
+        assertNull(vm.inputToken())
+        assertNull(routes.state.value.availableSelection)
+        assertEquals(RouteSelection(InferenceRoute.CHATGPT_PLAN, 0), routes.state.value.selection)
+        val restarted = ActiveRouteRepository(preferences) { error("Unexpected migration") }
+        restarted.load()
+        assertEquals(RouteSelection(InferenceRoute.OPENROUTER_API_KEY, 1), restarted.current())
+        assertEquals(1, provider.catalogs)
+        assertEquals(0, provider.sends)
+    }
+
+    private fun withRouteModel(block: suspend RouteModel.() -> Unit) = runTest {
+        Dispatchers.setMain(StandardTestDispatcher(testScheduler))
+        val preferences = RoutePreferenceFixture()
+        val routes = ActiveRouteRepository(preferences) { CredentialMode.CHATGPT_PLAN }
+        routes.load()
+        val account = routes.state.map { state ->
+            val selection = state.selection
+            val mode = selection?.route?.openAiMode
+            if (mode == null) InferenceAccessState(route = selection?.route, modeRevision = selection?.revision ?: 0)
+            else InferenceAccessState(mode, "synthetic", modeRevision = selection.revision,
+                usable = !state.storageError, problem = ApiProblem.STORAGE.takeIf { state.storageError })
+        }.stateIn(backgroundScope, SharingStarted.Eagerly, InferenceAccessState(route = null))
+        val provider = Provider()
+        val session = InferenceSession({
+            val selection = routes.current()
+            val mode = checkNotNull(selection.route.openAiMode)
+            CredentialLease("synthetic", 0, "synthetic-token", Long.MAX_VALUE, mode, selection.revision)
+        }, provider) {
+            runCatching { routes.current() }.getOrNull() == RouteSelection(InferenceRoute.openAi(it.mode), it.modeRevision)
+        }
+        val vm = InferenceViewModel(account, session, routes = routes)
+        try {
+            runCurrent()
+            RouteModel(this, preferences, routes, provider, session, vm).block()
+        } finally {
+            vm.viewModelScope.coroutineContext.job.cancelAndJoin()
+            Dispatchers.resetMain()
+        }
+    }
+
+    private class RouteModel(
+        val scope: TestScope,
+        val preferences: RoutePreferenceFixture,
+        val routes: ActiveRouteRepository,
+        val provider: Provider,
+        val session: InferenceSession,
+        val vm: InferenceViewModel,
+    )
+
     @Test fun activeAndQueuedRequestsMustFinishOrStopBeforeRouteMutation() = runTest {
         val routes = ActiveRouteRepository(RoutePreferenceFixture()) { CredentialMode.CHATGPT_PLAN }
         routes.load()

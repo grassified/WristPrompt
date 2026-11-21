@@ -129,17 +129,15 @@ internal fun WearShellContent(
     var switchMessage by remember(surface) { mutableStateOf<String?>(null) }
     fun requestRoute(route: InferenceRoute, confirmed: Boolean = false) {
         switchMessage = null
-        when (proof.switchRoute(route, composer.pending || inputPending, confirmed)) {
+        // Keep the launcher occupied until its callback drains. A committed switch
+        // invalidates the token before the callback can write into another route.
+        when (proof.switchRoute(route, inputPending, confirmed, onCommitted = { navigation.inputPending.value = false })) {
             RouteSwitchRequest.CONFIRM_DISCARD -> pendingRoute = route
             RouteSwitchRequest.BUSY -> {
                 pendingRoute = null
                 switchMessage = "Stop or finish the current operation before switching."
             }
-            RouteSwitchRequest.STARTED -> {
-                composer.discard()
-                inputPending = false
-                pendingRoute = null
-            }
+            RouteSwitchRequest.STARTED -> pendingRoute = null
             RouteSwitchRequest.UNAVAILABLE -> switchMessage = "Route selection is unavailable."
             RouteSwitchRequest.ALREADY_SELECTED -> pendingRoute = null
         }
@@ -164,7 +162,7 @@ internal fun WearShellContent(
             visible = true,
             onDismissRequest = { pendingRoute = null },
             title = { Text("Discard draft?") },
-            text = { Text("Switch to ${target.label()} and clear unsent text and pending photos.") },
+            text = { Text("Switch to ${target.label()} and clear unsent text, pending keyboard input and photos.") },
         ) {
             item { Button(onClick = { pendingRoute = null }, modifier = Modifier.fillMaxWidth(), label = { Text("Keep draft") }) }
             item { Button(onClick = { requestRoute(target, confirmed = true) }, modifier = Modifier.fillMaxWidth(),
@@ -266,7 +264,11 @@ internal fun WearShellContent(
                             Surface.CONNECTION -> {
                                 connectionItems(ui, accounts, key, setup, connectionChanging, actions, proof,
                                     selectorState,
-                                    switchMessage ?: "Wait for the current request to finish stopping.".takeIf { switchBusy },
+                                    switchMessage ?: when {
+                                        selectorState.storageError -> "Route selection could not be verified. Restart WristPrompt to check the saved route."
+                                        switchBusy -> "Wait for the current operation to finish, then try switching again."
+                                        else -> null
+                                    },
                                     onRoute = { requestRoute(it) },
                                     onDiagnostics = { navigation.open(Surface.DETAILS) },
                                 ) {

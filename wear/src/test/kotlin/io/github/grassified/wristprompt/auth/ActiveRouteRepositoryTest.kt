@@ -16,11 +16,15 @@ internal class RoutePreferenceFixture(initial: Preferences = emptyPreferences())
     override val data = MutableStateFlow(initial)
     var interruptBeforeCommit = false
     var interruptAfterCommit = false
+    var beforeCommit: suspend () -> Unit = {}
+    var commits = 0
 
     override suspend fun updateData(transform: suspend (Preferences) -> Preferences): Preferences {
         val next = transform(data.value)
+        beforeCommit()
         if (interruptBeforeCommit) throw IOException("Synthetic failed commit")
         data.value = next
+        commits++
         if (interruptAfterCommit) throw IOException("Synthetic lost commit acknowledgment")
         return next
     }
@@ -33,8 +37,8 @@ class ActiveRouteRepositoryTest {
             val repository = ActiveRouteRepository(preferences) { mode }
             repository.load()
             assertEquals(RouteSelection(InferenceRoute.openAi(mode), 0), repository.current())
-            repository.select(InferenceRoute.OPENROUTER_API_KEY)
-            repository.select(InferenceRoute.OPENROUTER_API_KEY)
+            assertTrue(repository.select(InferenceRoute.OPENROUTER_API_KEY))
+            assertFalse(repository.select(InferenceRoute.OPENROUTER_API_KEY))
             val restarted = ActiveRouteRepository(preferences) { error("Must not read legacy mode again") }
             restarted.load()
             assertEquals(RouteSelection(InferenceRoute.OPENROUTER_API_KEY, 1), restarted.current())
@@ -42,6 +46,18 @@ class ActiveRouteRepositoryTest {
             assertEquals(RouteSelection(InferenceRoute.openAi(mode), 2), restarted.current())
             assertEquals(setOf("active_route_v1", "selection_revision"), preferences.data.value.asMap().keys.map { it.name }.toSet())
         }
+    }
+
+    @Test fun supersededSelectionCannotCommitEvenAfterReturningToTheSameRoute() = runBlocking {
+        val preferences = RoutePreferenceFixture()
+        val repository = ActiveRouteRepository(preferences) { CredentialMode.CHATGPT_PLAN }
+        repository.load()
+        val stale = repository.current()
+        assertTrue(repository.select(InferenceRoute.OPENROUTER_API_KEY, stale))
+        assertTrue(repository.select(InferenceRoute.CHATGPT_PLAN, repository.current()))
+        assertFalse(repository.select(InferenceRoute.OPENAI_API_KEY, stale))
+        assertEquals(RouteSelection(InferenceRoute.CHATGPT_PLAN, 2), repository.current())
+        assertEquals(3, preferences.commits)
     }
 
     @Test fun malformedOrPartialRecordCannotSilentlyUseLegacyMode() = runBlocking {

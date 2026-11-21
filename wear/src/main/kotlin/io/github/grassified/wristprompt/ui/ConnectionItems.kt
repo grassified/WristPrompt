@@ -26,7 +26,7 @@ internal fun ShellListScope.connectionItems(
         RadioButton(
             selected = route == current,
             onSelect = { if (route != current) onRoute(route) },
-            enabled = current != null && !changing,
+            enabled = routeState.availableSelection != null && !changing,
             modifier = Modifier.fillMaxWidth(),
             label = { Text(route.label()) },
             secondaryLabel = { Text(when (route) {

@@ -29,6 +29,7 @@ class CredentialRouter(
             route = selection?.route,
         )
         val problem = when {
+            active.storageError -> ApiProblem.STORAGE
             mode == CredentialMode.OPENAI_API_KEY && k.storageError -> ApiProblem.STORAGE
             mode == CredentialMode.OPENAI_API_KEY && !k.loaded -> null
             mode == CredentialMode.OPENAI_API_KEY -> if (k.usableKey) null else ApiProblem.API_KEY_MISSING
@@ -67,7 +68,7 @@ class CredentialRouter(
 
     private suspend fun routeCurrent(lease: CredentialLease): Boolean =
         if (routes == null) keys.modeCurrent(lease.mode, lease.modeRevision)
-        else routes.state.value.selection == RouteSelection(InferenceRoute.openAi(lease.mode), lease.modeRevision)
+        else routes.state.value.availableSelection == RouteSelection(InferenceRoute.openAi(lease.mode), lease.modeRevision)
 
     suspend fun isCurrent(lease: CredentialLease): Boolean {
         if (!routeCurrent(lease)) return false
@@ -109,7 +110,7 @@ class CredentialRouter(
     }
     private fun accessCurrent(access: InferenceAccessState): Boolean =
         state.value == access && (routes == null ||
-            routes.state.value.selection == RouteSelection(InferenceRoute.openAi(access.mode), access.modeRevision))
+            routes.state.value.availableSelection == RouteSelection(InferenceRoute.openAi(access.mode), access.modeRevision))
 
     suspend fun selectModel(lease: CredentialLease, slug: String) {
         if (!isCurrent(lease)) throw ApiFailure(ApiProblem.STALE_ACCOUNT)

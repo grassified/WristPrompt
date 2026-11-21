@@ -29,7 +29,9 @@ enum class InferenceRoute(val openAiMode: CredentialMode?) {
 }
 
 data class RouteSelection(val route: InferenceRoute, val revision: Long)
-data class RouteSelectionState(val selection: RouteSelection? = null, val storageError: Boolean = false)
+data class RouteSelectionState(val selection: RouteSelection? = null, val storageError: Boolean = false) {
+    val availableSelection get() = selection.takeUnless { storageError }
+}
 
 class ActiveRouteRepository(
     private val store: DataStore<Preferences>,
@@ -58,11 +60,11 @@ class ActiveRouteRepository(
         }
     }
 
-    fun current(): RouteSelection = state.value.selection ?: throw SecureStorageException()
+    fun current(): RouteSelection = state.value.availableSelection ?: throw SecureStorageException()
 
-    internal suspend fun select(route: InferenceRoute) = mutex.withLock {
+    internal suspend fun select(route: InferenceRoute, expected: RouteSelection? = null): Boolean = mutex.withLock {
         val current = current()
-        if (current.route == route) return@withLock
+        if ((expected != null && current != expected) || current.route == route) return@withLock false
         withContext(NonCancellable) {
             try {
                 val next = RouteSelection(route, Math.addExact(current.revision, 1))
@@ -71,9 +73,10 @@ class ActiveRouteRepository(
                     put(preferences, next)
                 }
                 mutableState.value = RouteSelectionState(next)
+                true
             } catch (_: Exception) {
                 // The outcome may be uncertain until DataStore opens the record on restart.
-                mutableState.value = RouteSelectionState(storageError = true)
+                mutableState.value = RouteSelectionState(current, storageError = true)
                 throw SecureStorageException()
             }
         }

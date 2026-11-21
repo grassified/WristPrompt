@@ -53,6 +53,7 @@ class InferenceViewModel(
     private val conversation = ChatConversation()
     val imageSelection = io.github.grassified.wristprompt.images.ImageSelection()
     private var inputRevision = 0L
+    private var deferredPlatformInput: Pair<String, Long>? = null
     private var observedAccess = accounts.value
     private var contextModel: String? = null
     private val mutableChat = MutableStateFlow(conversation.state)
@@ -75,25 +76,31 @@ class InferenceViewModel(
         routes?.let { viewModelScope.launch { it.load() } }
         viewModelScope.launch {
             accounts.distinctUntilChanged { old, next -> old == next }.collect { account ->
+                val retainDraft = sameContextWithRouteStorageError(account)
                 observedAccess = account
                 cancelOperation()
                 prepared = null
                 historyScope = null
                 catalogScope = null
                 mutableHistory.value = ConversationHistory()
-                clearChat()
+                if (!retainDraft) clearChat()
                 mutableState.value = ProofState(problem = account.problem, mode = account.mode, modeRevision = account.modeRevision)
                 if (account.usable) loadModels()
             }
         }
     }
-    internal fun switchRoute(route: InferenceRoute, inputPending: Boolean, discardConfirmed: Boolean = false): RouteSwitchRequest {
+    internal fun switchRoute(
+        route: InferenceRoute,
+        inputPending: Boolean,
+        discardConfirmed: Boolean = false,
+        onCommitted: () -> Unit = {},
+    ): RouteSwitchRequest {
         val repository = routes ?: return RouteSwitchRequest.UNAVAILABLE
-        val previous = repository.state.value.selection ?: return RouteSwitchRequest.UNAVAILABLE
-        if (route == previous.route) return RouteSwitchRequest.ALREADY_SELECTED
         if (routeSwitching.value || operation?.isActive == true || completionOwner != null ||
             state.value.busy || chat.value.busy
         ) return RouteSwitchRequest.BUSY
+        val previous = repository.state.value.availableSelection ?: return RouteSwitchRequest.UNAVAILABLE
+        if (route == previous.route) return RouteSwitchRequest.ALREADY_SELECTED
         if (!discardConfirmed && (chat.value.draft.isNotEmpty() || imageSelection.selected.value.isNotEmpty() || inputPending)) {
             return RouteSwitchRequest.CONFIRM_DISCARD
         }
@@ -103,10 +110,14 @@ class InferenceViewModel(
             try {
                 val changed = session.changeRouteWhenIdle {
                     writer?.awaitIdle()
+                    if (!repository.select(route, previous)) {
+                        mutableSwitchBusy.value = true
+                        return@changeRouteWhenIdle
+                    }
                     restoreOnStartup = false
-                    repository.select(route)
-                    // A late platform input or existing draft never belongs to the new route.
-                    inputRevision++
+                    clearChat()
+                    deferredPlatformInput = null
+                    if (!cleared) onCommitted()
                 }
                 if (!changed) mutableSwitchBusy.value = true
             } catch (cancelled: CancellationException) {
@@ -116,7 +127,10 @@ class InferenceViewModel(
             } finally {
                 mutableRouteSwitching.value = false
             }
-            if (repository.state.value.selection?.route == route && observedAccess == accounts.value &&
+            val input = deferredPlatformInput
+            deferredPlatformInput = null
+            input?.let { (text, token) -> inputResult(text, token) }
+            if (repository.state.value.availableSelection?.route == route && observedAccess == accounts.value &&
                 observedAccess.route == route && observedAccess.usable && prepared == null
             ) loadModels()
         }
@@ -306,9 +320,27 @@ class InferenceViewModel(
         return true
     }
     fun inputResult(text: String, token: Long) {
-        if (cleared || token != inputRevision || accounts.value != observedAccess) return
-        draft(text, token)
+        val access = accounts.value
+        val retainDraft = sameContextWithRouteStorageError(access)
+        if (cleared || token != inputRevision || (access != observedAccess && !retainDraft)) return
+        if (routeSwitching.value) {
+            if (deferredPlatformInput == null) deferredPlatformInput = text to token
+            return
+        }
+        if (retainDraft) {
+            // A previously launched keyboard may still deliver text while dispatch is blocked.
+            conversation.draft(text)
+            publishChat()
+        } else {
+            draft(text, token)
+        }
         inputRevision++ // Consume once even if an external result is delivered again.
+    }
+
+    private fun sameContextWithRouteStorageError(access: InferenceAccessState): Boolean {
+        val route = routes?.state?.value ?: return false
+        return route.storageError && route.selection == RouteSelection(observedAccess.route ?: return false, observedAccess.modeRevision) &&
+            access.copy(usable = observedAccess.usable, problem = observedAccess.problem) == observedAccess
     }
     /** Review actions never touch files, completed chat, model, billing or inference. */
     fun removeDraftImage(id: String) {
@@ -623,7 +655,7 @@ class InferenceViewModel(
     }
     private fun routeMatches(access: InferenceAccessState): Boolean =
         routes == null || (access.route == InferenceRoute.openAi(access.mode) &&
-            routes.state.value.selection == RouteSelection(InferenceRoute.openAi(access.mode), access.modeRevision))
+            routes.state.value.availableSelection == RouteSelection(InferenceRoute.openAi(access.mode), access.modeRevision))
 
     private fun cancelled(run: Long) {
         if (run == epoch && state.value.busy) mutableState.value = state.value.copy(stage = ProofStage.CANCELLED)

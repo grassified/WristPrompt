@@ -9,8 +9,11 @@ until the necessary later milestones.
 
 A switch requires the current operation to finish or an explicit **Stop**. A draft,
 pending photos, or pending input requires confirmation. **Keep draft** and Back
-dismiss that confirmation. A confirmed switch clears the unsent context and
-invalidates late input. Completed chats and their attachment files retain their
+dismiss that confirmation. Only a confirmed storage commit clears the unsent
+context and invalidates late input. A keyboard result delivered during a switch
+is held until the outcome is known. If the session rejects the switch or storage
+cannot confirm it, the old draft and photos stay in memory and the result can
+still update the old draft. Completed chats and their attachment files retain their
 original scope and can be reopened on the original route. Unsupported replay
 remains read-only even after returning to the original route.
 
@@ -21,9 +24,11 @@ remains read-only even after returning to the original route.
   The two OpenAI credential records, model preferences, account selection and
   stable conversation owner identities are preserved. The legacy mode is read
   as the migration input. E2 does not mirror ongoing selection back into a vault.
-- A malformed record or uncertain write blocks credential acquisition. On
-  restart the stored committed selection is authoritative. Credential presence
-  and provider errors never select a different route.
+- A malformed record or uncertain write blocks credential acquisition. After an
+  uncertain write the selector shows the last confirmed route and asks for an
+  app restart. On restart the stored selection is authoritative. Unsent drafts
+  and photos remain process-local. Credential presence and provider errors
+  never select a different route.
 - The session admits route changes only while all queued and active provider
   work is idle. Requests keep their original lease, model and ownership.
   Revisions invalidate cached catalogs and results even on an A → B → A switch.
