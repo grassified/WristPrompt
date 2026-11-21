@@ -127,6 +127,11 @@ phone persistence. Scope failure to this key slot. Watch makes all subsequent
 requests to the fixed HTTPS OpenRouter host with its bearer, with redirects and
 automatic retries disabled. [OpenRouter authentication](https://openrouter.ai/docs/api_reference/authentication)
 
+F1 uses anonymous public discovery for browsing and process-local candidate
+selection. See [F1 catalog and acceptance](V0_2_0_F1_CATALOG.md) for its bounds
+and the unresolved account-scoped identity gate. The following authenticated
+discovery and routing requirements apply to F2 and later milestones.
+
 Prefer authenticated `GET /api/v1/models/user` if verified with an ordinary
 inference key. It is documented as preference/privacy/guardrail filtered, but
 the endpoint reference also lists a management-key 403 example. Verify this

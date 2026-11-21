@@ -35,6 +35,8 @@ import io.github.grassified.wristprompt.auth.*
 import io.github.grassified.wristprompt.bridge.WatchAuthViewModel
 import io.github.grassified.wristprompt.bridge.WatchAuthState
 import io.github.grassified.wristprompt.openai.*
+import io.github.grassified.wristprompt.openrouter.OpenRouterCatalogViewModel
+import io.github.grassified.wristprompt.openrouter.OpenRouterPublicCatalog
 
 @Composable
 internal fun WearShell(auth: WatchAuthViewModel, settings: ApiKeySettingsViewModel, proof: InferenceViewModel) {
@@ -62,9 +64,16 @@ internal fun WearShell(auth: WatchAuthViewModel, settings: ApiKeySettingsViewMod
             OpenRouterKeySettingsViewModel(app.openRouterKeys, app.openRouterSetup)
         }
     })
+    val catalog: OpenRouterCatalogViewModel = viewModel(factory = viewModelFactory {
+        initializer {
+            val app = context.applicationContext as io.github.grassified.wristprompt.WristPromptApplication
+            OpenRouterCatalogViewModel(app.routes.state, app.openRouterKeys.state, OpenRouterPublicCatalog())
+        }
+    })
     WearShellContent(accounts, bridge, key, setup, changing, proof,
         ConnectionActions(auth::start, auth::select, auth::signOut, auth::confirmPlanNotice,
-            settings::request, settings::remove), presets = presets, photos = photos, openRouter = openRouter)
+            settings::request, settings::remove), presets = presets, photos = photos, openRouter = openRouter,
+        openRouterCatalog = catalog)
 }
 
 internal data class ConnectionActions(
@@ -82,6 +91,7 @@ internal fun WearShellContent(
     presets: io.github.grassified.wristprompt.presets.WatchPresetsViewModel? = null,
     photos: io.github.grassified.wristprompt.images.WatchImagesViewModel? = null,
     openRouter: OpenRouterKeySettingsViewModel? = null,
+    openRouterCatalog: OpenRouterCatalogViewModel? = null,
 ) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val appVersion = remember(context) { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
@@ -120,6 +130,7 @@ internal fun WearShellContent(
         RouteSelection(InferenceRoute.openAi(key.mode), key.modeRevision).takeIf { key.loaded && !key.storageError }, key.storageError,
     )
     val activeMode = selectorState.selection?.route?.openAiMode
+    val catalogRoute = selectorState.availableSelection?.route == InferenceRoute.OPENROUTER_API_KEY
     val routeContextReady = routeState == null || routeState.selection?.let {
         state.modeRevision == it.revision && (activeMode == null || state.mode == activeMode)
     } == true
@@ -189,6 +200,8 @@ internal fun WearShellContent(
                     surface == Surface.IMAGES && photos != null -> ImagesScreen(photos, proof, navigation)
                     surface == Surface.PROMPTS && presets != null -> PromptsScreen(presets, proof, navigation)
                     surface == Surface.HISTORY -> HistoryScreen(proof, navigation)
+                    surface == Surface.OPENROUTER_CATALOG && catalogRoute && openRouterCatalog != null ->
+                        OpenRouterCatalogScreen(openRouterCatalog, back)
                     else -> ShellList(Modifier.fillMaxSize(), rememberShellScroll(navigation, surface)) {
                         action("Back", onClick = back)
 
@@ -262,6 +275,12 @@ internal fun WearShellContent(
 
                             }
                             Surface.CONNECTION -> {
+                                if (catalogRoute && openRouterCatalog != null) {
+                                    action("Browse OpenRouter models", enabled = !selecting &&
+                                        (openRouterState?.generation != null || openRouterState?.storageError == true)) {
+                                        navigation.open(Surface.OPENROUTER_CATALOG)
+                                    }
+                                }
                                 connectionItems(ui, accounts, key, setup, connectionChanging, actions, proof,
                                     selectorState,
                                     switchMessage ?: when {
@@ -320,6 +339,7 @@ internal fun WearShellContent(
                                 item { ShellText(ui.status) }
                                 if (ui.showOutput) paragraphs(state.output)
                             }
+                            Surface.OPENROUTER_CATALOG -> item { ShellText("OpenRouter catalog unavailable on this route.") }
                             Surface.CHAT, Surface.COMPOSER, Surface.HISTORY -> Unit
                         }
                     }

@@ -30,7 +30,12 @@ internal data class OpenRouterKeyLease(val generation: Long, val localIdentity: 
     override fun toString() = SafeDiagnostics.REDACTED
 }
 
-internal data class OpenRouterKeyState(val configured: Boolean = false, val storageError: Boolean = false, val setupPending: Boolean = false)
+internal data class OpenRouterKeyState(
+    val configured: Boolean = false,
+    val storageError: Boolean = false,
+    val setupPending: Boolean = false,
+    val generation: Long? = null,
+)
 
 internal class OpenRouterKeyRepository(
     private val record: SecretRecord,
@@ -135,7 +140,11 @@ internal class OpenRouterKeyRepository(
     }
 
     private fun publish(vault: OpenRouterKeyVault) {
-        mutableState.value = OpenRouterKeyState(configured = vault.key != null, setupPending = vault.pending?.let { OpenRouterKeyProtocol.fresh(it, now()) } == true)
+        mutableState.value = OpenRouterKeyState(
+            configured = vault.key != null,
+            setupPending = vault.pending?.let { OpenRouterKeyProtocol.fresh(it, now()) } == true,
+            generation = vault.generation,
+        )
     }
 
     private inline fun <T> protect(block: () -> T): T = try {
