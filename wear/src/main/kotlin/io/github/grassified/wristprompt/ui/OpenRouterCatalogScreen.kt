@@ -45,16 +45,26 @@ internal fun OpenRouterCatalogScreen(model: OpenRouterCatalogViewModel, back: ()
         }
     }
     val details = state.details
-    BackHandler(enabled = details != null, onBack = model::closeDetails)
+    val endpoints = state.endpoints
+    val detailsBack = if (endpoints == null) model::closeDetails else model::closeEndpoints
+    BackHandler(enabled = details != null, onBack = detailsBack)
     val results = (state.result as? PublicCatalogResult.Loaded)?.candidates
     val matches = remember(results, state.query) { matchingCandidates(results.orEmpty(), state.query) }
     val listScroll = remember(state.query) { TransformingLazyColumnState() }
-    key(details?.id) {
-        val scroll = if (details == null) listScroll else remember { TransformingLazyColumnState() }
+    val detailsScroll = remember(details?.id) { TransformingLazyColumnState() }
+    key(details?.id, endpoints != null) {
+        val scroll = when {
+            endpoints != null -> remember { TransformingLazyColumnState() }
+            details != null -> detailsScroll
+            else -> listScroll
+        }
         ShellList(Modifier.fillMaxSize(), scroll) {
-            action("Back", onClick = if (details == null) back else model::closeDetails)
-            if (details != null) {
-                candidateDetails(details, state.selectedId == details.id) { model.selectCandidate(details.id) }
+            action("Back", onClick = if (details == null) back else detailsBack)
+            if (details != null && endpoints != null) {
+                endpointItems(details.id, endpoints, model::loadEndpoints)
+            } else if (details != null) {
+                val selected = state.selectedId == details.id
+                candidateDetails(details, selected, { model.selectCandidate(details.id) }, model::openEndpoints)
             } else {
                 item { ShellText("Public model candidates", heading = true) }
                 item { ShellText("Account eligibility unverified. OpenRouter chat is disabled.") }
@@ -115,12 +125,18 @@ internal fun OpenRouterCatalogScreen(model: OpenRouterCatalogViewModel, back: ()
     }
 }
 
-private fun ShellListScope.candidateDetails(candidate: PublicModelCandidate, selected: Boolean, select: () -> Unit) {
+private fun ShellListScope.candidateDetails(
+    candidate: PublicModelCandidate,
+    selected: Boolean,
+    select: () -> Unit,
+    inspectEndpoints: () -> Unit,
+) {
     paragraphs(candidate.name)
     paragraphs("Canonical slug · ${candidate.canonicalSlug}")
     if (candidate.id != candidate.canonicalSlug) paragraphs("Model ID · ${candidate.id}")
     item { ShellText("Public candidate", heading = true) }
     action(if (selected) "Candidate selected" else "Select candidate", enabled = !selected, onClick = select)
+    if (selected) action("Endpoint metadata", onClick = inspectEndpoints)
     paragraphs("Input · ${candidate.inputModalities.label()}")
     paragraphs("Output · ${candidate.outputModalities.label()}")
     paragraphs("Catalog context · ${candidate.contextTokens.tokens()}")
@@ -129,7 +145,7 @@ private fun ShellListScope.candidateDetails(candidate: PublicModelCandidate, sel
     item { ShellText("Upstream eligibility unverified. Chat is disabled.") }
 }
 
-private fun Int?.tokens() = this?.let { "%,d tokens".format(it) } ?: "Unknown"
+internal fun Int?.tokens() = this?.let { "%,d tokens".format(it) } ?: "Unknown"
 private fun List<String>?.label() = this?.takeIf { it.isNotEmpty() }?.joinToString() ?: "Unknown"
 
 private fun CatalogProblem.message(): String = when (this) {

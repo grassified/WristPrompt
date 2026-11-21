@@ -21,6 +21,7 @@ internal data class OpenRouterCatalogState(
     val query: String = "",
     val selectedId: String? = null,
     val details: PublicModelCandidate? = null,
+    val endpoints: EndpointDetails? = null,
 )
 
 private data class CatalogScope(val routeRevision: Long, val keyGeneration: Long?, val keyStorageError: Boolean)
@@ -29,6 +30,7 @@ internal class OpenRouterCatalogViewModel(
     private val route: StateFlow<RouteSelectionState>,
     private val key: StateFlow<OpenRouterKeyState>,
     private val catalog: PublicModelCatalog,
+    private val endpointSource: PublicEndpointSource? = null,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(OpenRouterCatalogState())
     val state = mutableState.asStateFlow()
@@ -36,6 +38,8 @@ internal class OpenRouterCatalogViewModel(
     private var visible = false
     private var load: Job? = null
     private var operation = 0L
+    private var endpointLoad: Job? = null
+    private var endpointOperation = 0L
 
     init {
         viewModelScope.launch {
@@ -51,7 +55,8 @@ internal class OpenRouterCatalogViewModel(
     fun leave() {
         visible = false
         cancelLoad()
-        mutableState.value = mutableState.value.copy(loading = false, result = null, query = "", details = null)
+        cancelEndpointLoad()
+        mutableState.value = mutableState.value.copy(loading = false, result = null, query = "", details = null, endpoints = null)
     }
 
     fun refresh() {
@@ -59,8 +64,9 @@ internal class OpenRouterCatalogViewModel(
         val expectedScope = scope ?: return
         if (!visible) return
         cancelLoad()
+        cancelEndpointLoad()
         val request = operation
-        mutableState.value = mutableState.value.copy(loading = true, result = null, details = null)
+        mutableState.value = mutableState.value.copy(loading = true, result = null, details = null, endpoints = null)
         load = viewModelScope.launch {
             if (expectedScope != currentScope()) return@launch
             val result = catalog.load()
@@ -81,16 +87,61 @@ internal class OpenRouterCatalogViewModel(
         if (!canInteract()) return
         val result = state.value.result as? PublicCatalogResult.Loaded ?: return
         val model = result.candidates.firstOrNull { it.id == id } ?: return
-        mutableState.value = state.value.copy(details = model)
+        cancelEndpointLoad()
+        mutableState.value = state.value.copy(details = model, endpoints = null)
     }
 
     fun closeDetails() {
-        mutableState.value = state.value.copy(details = null)
+        cancelEndpointLoad()
+        mutableState.value = state.value.copy(details = null, endpoints = null)
     }
 
     fun selectCandidate(id: String) {
         if (!canInteract() || state.value.details?.id != id) return
         mutableState.value = state.value.copy(selectedId = id)
+    }
+
+    fun openEndpoints() {
+        if (!canInteract()) return
+        val current = state.value
+        val candidate = current.details ?: return
+        if (current.selectedId != candidate.id) return
+        cancelEndpointLoad()
+        val keyStatus = key.value
+        val available = endpointSource != null && keyStatus.generation != null && !keyStatus.storageError
+        mutableState.value = current.copy(endpoints = if (available) EndpointDetails.Idle else EndpointDetails.Unavailable)
+    }
+
+    fun closeEndpoints() {
+        cancelEndpointLoad()
+        mutableState.value = state.value.copy(endpoints = null)
+    }
+
+    fun loadEndpoints() {
+        val source = endpointSource ?: return
+        if (!canInteract()) return
+        val expectedScope = scope ?: return
+        val current = state.value
+        val candidate = current.details ?: return
+        if (current.endpoints == null || current.endpoints == EndpointDetails.Unavailable) return
+        cancelEndpointLoad()
+        val request = endpointOperation
+        mutableState.value = current.copy(endpoints = EndpointDetails.Loading)
+        endpointLoad = viewModelScope.launch {
+            if (expectedScope != currentScope()) return@launch
+            val result = source.load(candidate)
+            if (isActive && visible && endpointOperation == request && expectedScope == currentScope() &&
+                state.value.details?.id == candidate.id
+            ) {
+                mutableState.value = state.value.copy(endpoints = result)
+            }
+        }
+    }
+
+    private fun cancelEndpointLoad() {
+        endpointOperation++
+        endpointLoad?.cancel()
+        endpointLoad = null
     }
 
     private fun canInteract(): Boolean = visible && scope != null && scope == currentScope()
@@ -107,6 +158,7 @@ internal class OpenRouterCatalogViewModel(
         if (scope == current) return
         scope = current
         cancelLoad()
+        cancelEndpointLoad()
         mutableState.value = OpenRouterCatalogState(onOpenRouter = current != null)
     }
 

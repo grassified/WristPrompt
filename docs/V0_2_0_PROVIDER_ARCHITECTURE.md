@@ -129,7 +129,9 @@ automatic retries disabled. [OpenRouter authentication](https://openrouter.ai/do
 
 F1 uses anonymous public discovery for browsing and process-local candidate
 selection. See [F1 catalog and acceptance](V0_2_0_F1_CATALOG.md) for its bounds
-and the unresolved account-scoped identity gate. The following authenticated
+and the unresolved account-scoped identity gate. [F2a endpoint metadata](V0_2_0_F2A_ENDPOINT_METADATA.md)
+adds read-only inspection with a debug fixture and a disabled production lookup.
+The following authenticated
 discovery and routing requirements apply to F2 and later milestones.
 
 Prefer authenticated `GET /api/v1/models/user` if verified with an ordinary

@@ -161,6 +161,125 @@ class OpenRouterCatalogViewModelTest {
         assertFalse(model.state.value.onOpenRouter)
     }
 
+    @Test fun productionEndpointLookupIsDisabledAndNeedsAnExplicitCandidate() = withFixture {
+        val production = OpenRouterCatalogViewModel(route, key, PublicModelCatalog { old })
+        try {
+            production.enter()
+            runCurrent()
+            val id = old.candidates.single().id
+            production.showModel(id)
+            production.openEndpoints()
+            assertNull(production.state.value.endpoints)
+            production.selectCandidate(id)
+            production.openEndpoints()
+            assertEquals(EndpointDetails.Unavailable, production.state.value.endpoints)
+            production.loadEndpoints()
+            runCurrent()
+            assertEquals(EndpointDetails.Unavailable, production.state.value.endpoints)
+        } finally {
+            production.viewModelScope.coroutineContext.job.cancelAndJoin()
+        }
+    }
+
+    @Test fun explicitLoadRetryAndSupersessionIgnoreLateEndpointReplies() = withFixture {
+        model.enter()
+        runCurrent()
+        complete(0, old)
+        openEndpoints(old.candidates.single().id)
+        assertEquals(EndpointDetails.Idle, model.state.value.endpoints)
+        assertTrue(endpointRequests.isEmpty())
+
+        model.loadEndpoints()
+        runCurrent()
+        val failure = EndpointDetails.Failed(CatalogProblem.SERVICE)
+        completeEndpoint(0, failure)
+        assertEquals(failure, model.state.value.endpoints)
+        model.loadEndpoints()
+        runCurrent()
+        assertEquals(EndpointDetails.Loading, model.state.value.endpoints)
+        model.loadEndpoints()
+        runCurrent()
+        completeEndpoint(2, emptyEndpoints)
+        completeEndpoint(1, failure)
+        assertEquals(emptyEndpoints, model.state.value.endpoints)
+        assertEquals(List(3) { old.candidates.single().id }, endpointRequests)
+    }
+
+    @Test fun switchingModelsRefreshAndBackClearEndpointStateAndRejectLateReplies() = withFixture {
+        val a = old.candidates.single().id
+        val b = fresh.candidates.single().id
+        model.enter()
+        runCurrent()
+        complete(0, PublicCatalogResult.Loaded(old.candidates + fresh.candidates))
+        openEndpoints(a)
+        model.loadEndpoints()
+        runCurrent()
+        openEndpoints(b)
+        model.loadEndpoints()
+        runCurrent()
+        completeEndpoint(0, emptyEndpoints)
+        assertEquals(EndpointDetails.Loading, model.state.value.endpoints)
+        assertEquals(listOf(a, b), endpointRequests)
+        model.closeEndpoints()
+        completeEndpoint(1, emptyEndpoints)
+        assertNull(model.state.value.endpoints)
+        assertEquals(b, model.state.value.details?.id)
+
+        model.openEndpoints()
+        model.loadEndpoints()
+        runCurrent()
+        model.refresh()
+        completeEndpoint(2, emptyEndpoints)
+        assertNull(model.state.value.endpoints)
+        assertNull(model.state.value.details)
+        assertEquals(b, model.state.value.selectedId)
+    }
+
+    @Test fun keyReplacementRemovalAndABARouteCannotPublishOldEndpoints() = withFixture {
+        val id = old.candidates.single().id
+        model.enter()
+        runCurrent()
+        complete(0, old)
+        openEndpoints(id)
+        model.loadEndpoints()
+        runCurrent()
+        key.value = OpenRouterKeyState(configured = true, generation = 2)
+        key.value = OpenRouterKeyState(generation = 3)
+        completeEndpoint(0, emptyEndpoints)
+        assertNull(model.state.value.endpoints)
+        assertNull(model.state.value.selectedId)
+
+        model.refresh()
+        runCurrent()
+        complete(1, old)
+        openEndpoints(id)
+        model.loadEndpoints()
+        runCurrent()
+        route.value = selected(InferenceRoute.OPENAI_API_KEY, 1)
+        route.value = selected(InferenceRoute.OPENROUTER_API_KEY, 2)
+        completeEndpoint(1, emptyEndpoints)
+        assertNull(model.state.value.endpoints)
+        assertNull(model.state.value.selectedId)
+
+        model.refresh()
+        runCurrent()
+        complete(2, old)
+        openEndpoints(id)
+        model.loadEndpoints()
+        runCurrent()
+        model.leave()
+        completeEndpoint(2, emptyEndpoints)
+        assertNull(model.state.value.endpoints)
+        val restarted = OpenRouterCatalogViewModel(route, key, catalog)
+        try {
+            runCurrent()
+            assertNull(restarted.state.value.endpoints)
+            assertNull(restarted.state.value.selectedId)
+        } finally {
+            restarted.viewModelScope.coroutineContext.job.cancelAndJoin()
+        }
+    }
+
     @Test fun searchBoundsAndUnusualUnicode() {
         val text = "x".repeat(79) + "😀" + "unbounded".repeat(9000)
         assertEquals("x".repeat(79), boundedCatalogQuery(text))
@@ -189,7 +308,24 @@ class OpenRouterCatalogViewModelTest {
         val started get() = pending.size
         // Deliberately ignore cancellation so the publication guard sees late replies.
         val catalog = PublicModelCatalog { suspendCoroutine { pending += it } }
-        val model = OpenRouterCatalogViewModel(route, key, catalog)
+        private val endpointPending = mutableListOf<Continuation<EndpointDetails>?>()
+        val endpointRequests = mutableListOf<String>()
+        val model = OpenRouterCatalogViewModel(route, key, catalog) { candidate ->
+            endpointRequests += candidate.id
+            suspendCoroutine { endpointPending += it }
+        }
+
+        fun openEndpoints(id: String) {
+            model.showModel(id)
+            model.selectCandidate(id)
+            model.openEndpoints()
+        }
+
+        fun completeEndpoint(index: Int, result: EndpointDetails) {
+            requireNotNull(endpointPending[index]).resume(result)
+            endpointPending[index] = null
+            scope.runCurrent()
+        }
 
         fun runCurrent() = scope.runCurrent()
 
@@ -203,6 +339,7 @@ class OpenRouterCatalogViewModelTest {
             val job = model.viewModelScope.coroutineContext.job
             job.cancel()
             pending.indices.filter { pending[it] != null }.forEach { complete(it, old) }
+            endpointPending.indices.filter { endpointPending[it] != null }.forEach { completeEndpoint(it, emptyEndpoints) }
             job.join()
         }
     }
@@ -213,6 +350,7 @@ class OpenRouterCatalogViewModelTest {
         val old = PublicCatalogResult.Loaded(listOf(PublicModelCandidate(
             "example/old:free", "example/permanent", "De\u0301mo", null, null, null, null, null,
         )))
+        val emptyEndpoints = EndpointDetails.Loaded(emptyList())
         val fresh = PublicCatalogResult.Loaded(listOf(old.candidates.single().copy(id = "example/fresh")))
     }
 }
