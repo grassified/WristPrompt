@@ -10,7 +10,7 @@ results, failure and retry.
 
 ## API contract and limits
 
-The operation is `listEndpoints`, `GET https://openrouter.ai/api/v1/models/{author}/{slug}/endpoints`.
+OpenRouter API 1.0.0 (OpenAPI 3.1.0) defines `listEndpoints`, `GET https://openrouter.ai/api/v1/models/{author}/{slug}/endpoints`.
 The operation inherits the OpenAPI document's bearer requirement, which the
 reference also marks required. Separate read-only probes without authorization,
 cookies or redirects returned HTTP 200 for `openai/gpt-4o-mini`, `openai/gpt-4`,
@@ -102,3 +102,19 @@ adb -s "$SERIAL" shell am start -W -f 0x20000000 -n io.github.grassified.wristpr
 
 Use [the repository gate](TESTING.md) for both app variants, tests, lint and
 artifact isolation.
+
+## Acceptance evidence
+
+- **VERIFIED AUTOMATICALLY.** 696 Wear, 104 mobile and 53 Python tests passed.
+  The Wear suite includes 12 added F2a tests and the existing F1, E1, E2
+  and OpenAI regressions. Both debug and unsigned release builds, both lints,
+  scenario isolation, documentation targets and whitespace passed. The
+  preview's existing debug-only recents warning remains non-blocking.
+- **VERIFIED ON EMULATOR.** On the disposable 480×480 round Wear AVD,
+  the preview showed metadata and both same-tag records at 1.0× and 1.5×
+  fonts. Virtual rotary, Back, empty results, explicit retry after HTTP
+  503, cancellation on Back and stale-result rejection on an OpenRouter →
+  OpenAI → OpenRouter route change passed. With the production entry path,
+  anonymous F1 browsing succeeded and the endpoint load button was disabled.
+- Live ordinary-key and exact-routing acceptance remain unverified. No owner
+  hardware or paid inference was used.
