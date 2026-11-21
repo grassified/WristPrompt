@@ -24,7 +24,7 @@ def check_dependencies():
 def check():
     check_dependencies()
     from wear_scenarios import scenarios
-    markers = ('DebugOpenRouterCatalogActivity', 'Alder Catalog Fixture', 'DebugTranscriptActivity', 'MathRenderingInstrumentation', 'ImageGenerationInstrumentation', 'DebugGenerationActivity', 'GenerationAcceptanceOwner', 'DEBUG_GENERATION', 'debug-generation.txt', 'DebugScenario', 'StreamingPreviewActivity', 'DEBUG_LIFECYCLE',
+    markers = ('DebugOpenRouterCatalogActivity', 'Alder Catalog Fixture', 'Endpoint F2a Fixture', 'DebugEndpointProtocol', 'DebugTranscriptActivity', 'MathRenderingInstrumentation', 'ImageGenerationInstrumentation', 'DebugGenerationActivity', 'GenerationAcceptanceOwner', 'DEBUG_GENERATION', 'debug-generation.txt', 'DebugScenario', 'StreamingPreviewActivity', 'DEBUG_LIFECYCLE',
                'debug-scenario-ready.txt', 'BuildConfig.DEBUG', *scenarios())
     for source in ('wear/src/main', 'mobile/src/main', 'shared/src/main'):
         for p in (ROOT / source).rglob('*'):
@@ -47,7 +47,7 @@ def check():
             dex = b''.join(archive.read(name) for name in archive.namelist() if name.endswith('.dex'))
         assert b'MathRenderingInstrumentation' not in dex, (variant, 'math test runner leaked into app')
         assert b'ImageGenerationInstrumentation' not in dex, (variant, 'test runner leaked into app')
-        for marker in (b'DebugOpenRouterCatalogActivity', b'Alder Catalog Fixture', b'DebugTranscriptActivity', b'DebugGenerationActivity', b'GenerationAcceptanceOwner', b'DEBUG_GENERATION', b'debug-generation.txt', b'DebugScenarioActivity', b'DebugScenarios;', b'DebugScenario;', b'ScenarioOwner;',
+        for marker in (b'DebugOpenRouterCatalogActivity', b'Alder Catalog Fixture', b'Endpoint F2a Fixture', b'DebugEndpointProtocol', b'DebugTranscriptActivity', b'DebugGenerationActivity', b'GenerationAcceptanceOwner', b'DEBUG_GENERATION', b'debug-generation.txt', b'DebugScenarioActivity', b'DebugScenarios;', b'DebugScenario;', b'ScenarioOwner;',
                        b'debug-scenario-ready.txt', b'DEBUG_LIFECYCLE'):
             assert (marker in dex) == (variant == 'debug'), (variant, marker)
     for name in scenarios():

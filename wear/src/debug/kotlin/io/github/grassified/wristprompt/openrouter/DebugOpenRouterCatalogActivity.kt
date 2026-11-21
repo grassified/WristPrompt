@@ -1,5 +1,6 @@
 package io.github.grassified.wristprompt.openrouter
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -18,9 +19,22 @@ import okhttp3.OkHttpClient
 import okhttp3.Protocol
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
+import java.io.IOException
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Drives the real browser and HTTP decoder with closed, synthetic responses. */
 class DebugOpenRouterCatalogActivity : ComponentActivity() {
+    private val route = MutableStateFlow(RouteSelectionState(RouteSelection(InferenceRoute.OPENROUTER_API_KEY, 0)))
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra("switch-route", false)) {
+            val revision = checkNotNull(route.value.selection).revision
+            route.value = RouteSelectionState(RouteSelection(InferenceRoute.OPENAI_API_KEY, revision + 1))
+            route.value = RouteSelectionState(RouteSelection(InferenceRoute.OPENROUTER_API_KEY, revision + 2))
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val fixture = when (intent.getStringExtra("fixture")) {
@@ -36,13 +50,42 @@ class DebugOpenRouterCatalogActivity : ComponentActivity() {
             Response.Builder().request(request).protocol(Protocol.HTTP_1_1)
                 .code(200).message("Synthetic catalog").body(fixture.toResponseBody()).build()
         }
+        val endpointFixture = intent.getStringExtra("endpoint-fixture")
+        val attempts = AtomicInteger()
+        val endpoints = DebugEndpointProtocol(OkHttpClient.Builder().addInterceptor { chain ->
+            val request = chain.request()
+            check(request.method == "GET" && request.url.host == "openrouter.ai" &&
+                request.url.encodedPath in listOf("/api/v1/models/fixture/alder:free/endpoints", "/api/v1/models/fixture/birch/endpoints") &&
+                request.header("Authorization") == null)
+            var code = 200
+            val fixtureMode = if (request.url.pathSegments[4] == "birch") "birch" else endpointFixture
+            val body = when (fixtureMode) {
+                "birch" -> """{"data":{"id":"fixture/birch","endpoints":[]}}"""
+                "empty" -> """{"data":{"id":"fixture/alder:free","endpoints":[]}}"""
+                "error" -> {
+                    if (attempts.getAndIncrement() == 0) code = 503
+                    ENDPOINTS
+                }
+                "slow" -> {
+                    repeat(40) {
+                        if (chain.call().isCanceled()) throw IOException("Synthetic endpoint cancelled")
+                        Thread.sleep(100)
+                    }
+                    ENDPOINTS
+                }
+                else -> ENDPOINTS
+            }
+            Response.Builder().request(request).protocol(Protocol.HTTP_1_1)
+                .code(code).message("Synthetic endpoint").body(body.toResponseBody()).build()
+        })
         setContent {
             val model: OpenRouterCatalogViewModel = viewModel(factory = viewModelFactory {
                 initializer {
                     OpenRouterCatalogViewModel(
-                        MutableStateFlow(RouteSelectionState(RouteSelection(InferenceRoute.OPENROUTER_API_KEY, 0))),
+                        route,
                         MutableStateFlow(OpenRouterKeyState(generation = 0)),
                         OpenRouterPublicCatalog(client),
+                        endpoints,
                     )
                 }
             })
@@ -53,6 +96,17 @@ class DebugOpenRouterCatalogActivity : ComponentActivity() {
     }
 
     private companion object {
+        const val ENDPOINTS = """
+            {"data":{"id":"fixture/alder:free","endpoints":[
+              {"name":"Endpoint F2a Fixture US","provider_name":"Example Cloud","tag":"example",
+               "model_id":"fixture/alder-v1","context_length":32000,"max_completion_tokens":2048,
+               "supported_parameters":["temperature","max_tokens"],"quantization":"fp8",
+               "pricing":{"prompt":"0.0000005","completion":"0.000001"}},
+              {"name":"Endpoint F2a Fixture EU","provider_name":"Example Cloud","tag":"example",
+               "model_id":"fixture/alder-v1","context_length":32000,"service_tier":"priority"}
+            ]}}
+        """
+
         const val CATALOG = """
             {"data":[
               {"id":"fixture/alder:free","canonical_slug":"fixture/alder-v1","name":"Alder Catalog Fixture",

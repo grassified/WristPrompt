@@ -26,17 +26,7 @@ internal data class PublicCatalogPage(
 )
 
 internal fun parsePublicCatalogPage(bytes: ByteArray): PublicCatalogPage {
-    val source = try {
-        bytes.decodeToString(throwOnInvalidSequence = true)
-    } catch (_: CharacterCodingException) {
-        fail(CatalogProblem.MALFORMED)
-    }
-    checkJsonBounds(source)
-    val root = try {
-        Json.parseToJsonElement(source) as? JsonObject
-    } catch (_: IllegalArgumentException) {
-        fail(CatalogProblem.MALFORMED)
-    } ?: fail(CatalogProblem.MALFORMED)
+    val root = parseBoundedPublicObject(bytes)
     val rows = root["data"] as? JsonArray ?: fail(CatalogProblem.MALFORMED)
     if (rows.size > PAGE_SIZE) fail(CatalogProblem.TOO_LARGE)
     val total = root.number("total_count")?.takeIf { it >= 0 } ?: fail(CatalogProblem.MALFORMED)
@@ -51,7 +41,23 @@ internal fun parsePublicCatalogPage(bytes: ByteArray): PublicCatalogPage {
     return PublicCatalogPage(rows.map { model(it as? JsonObject ?: fail(CatalogProblem.MALFORMED)) }, total, hasNext)
 }
 
+internal fun parseBoundedPublicObject(bytes: ByteArray): JsonObject {
+    val source = try {
+        bytes.decodeToString(throwOnInvalidSequence = true)
+    } catch (_: CharacterCodingException) {
+        fail(CatalogProblem.MALFORMED)
+    }
+    checkJsonBounds(source)
+    return try {
+        Json.parseToJsonElement(source) as? JsonObject
+    } catch (_: IllegalArgumentException) {
+        fail(CatalogProblem.MALFORMED)
+    } ?: fail(CatalogProblem.MALFORMED)
+}
+
 private val modelId = Regex("~?[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.:+-]*")
+internal fun isPublicModelId(value: String) = value.length <= 160 && modelId.matches(value)
+
 private val capability = Regex("[a-zA-Z0-9_.:-]+")
 
 private fun model(row: JsonObject): PublicModelCandidate {
@@ -61,8 +67,8 @@ private fun model(row: JsonObject): PublicModelCandidate {
     if (name.any { it.isISOControl() || it in '\u202a'..'\u202e' || it in '\u2066'..'\u2069' } ||
         !Charsets.UTF_8.newEncoder().canEncode(name)) fail(CatalogProblem.MALFORMED)
     return PublicModelCandidate(
-        id = row.requiredText("id", 160).also { if (!modelId.matches(it)) fail(CatalogProblem.MALFORMED) },
-        canonicalSlug = row.requiredText("canonical_slug", 160).also { if (!modelId.matches(it)) fail(CatalogProblem.MALFORMED) },
+        id = row.requiredText("id", 160).also { if (!isPublicModelId(it)) fail(CatalogProblem.MALFORMED) },
+        canonicalSlug = row.requiredText("canonical_slug", 160).also { if (!isPublicModelId(it)) fail(CatalogProblem.MALFORMED) },
         name = name,
         inputModalities = architecture?.labels("input_modalities", 16),
         outputModalities = architecture?.labels("output_modalities", 16),
@@ -72,18 +78,27 @@ private fun model(row: JsonObject): PublicModelCandidate {
     )
 }
 
-private fun JsonObject.requiredText(key: String, limit: Int) =
+internal fun JsonObject.requiredText(key: String, limit: Int) =
     (get(key) as? JsonPrimitive)?.takeIf { it.isString }?.content
         ?.also { if (it.length > limit) fail(CatalogProblem.TOO_LARGE) }
         ?.takeIf(String::isNotBlank) ?: fail(CatalogProblem.MALFORMED)
 
-private fun JsonObject.optionalObject(key: String): JsonObject? = when (val value = get(key)) {
+internal fun JsonObject.optionalText(key: String, limit: Int): String? {
+    val value = get(key)
+    if (value == null || value == JsonNull) return null
+    val text = requiredText(key, limit)
+    if (text.any { it.isISOControl() || it in '\u202a'..'\u202e' || it in '\u2066'..'\u2069' } ||
+        !Charsets.UTF_8.newEncoder().canEncode(text)) fail(CatalogProblem.MALFORMED)
+    return text
+}
+
+internal fun JsonObject.optionalObject(key: String): JsonObject? = when (val value = get(key)) {
     null, JsonNull -> null
     is JsonObject -> value
     else -> fail(CatalogProblem.MALFORMED)
 }
 
-private fun JsonObject.labels(key: String, limit: Int): List<String>? {
+internal fun JsonObject.labels(key: String, limit: Int): List<String>? {
     val value = get(key) ?: return null
     if (value == JsonNull) return null
     val array = value as? JsonArray ?: fail(CatalogProblem.MALFORMED)
@@ -102,7 +117,7 @@ private fun JsonObject.number(key: String): Int? = when (val value = get(key)) {
     else -> fail(CatalogProblem.MALFORMED)
 }
 
-private fun JsonObject.positiveLimit(key: String) = number(key)?.takeIf { it > 0 }
+internal fun JsonObject.positiveLimit(key: String) = number(key)?.takeIf { it > 0 }
 
 /** Cap nesting and raw string size before handing untrusted input to the JSON tree parser. */
 private fun checkJsonBounds(source: String) {
